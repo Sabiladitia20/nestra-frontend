@@ -463,3 +463,10 @@
 .metric-glow-cyan { text-shadow: 0 0 20px rgba(6, 182, 212, 0.2); }
 .metric-glow-green { text-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
 .metric-glow-amber { text-shadow: 0 0 20px rgba(245, 158, 11, 0.2); }
+
+/* ═══════════════════════════════════════════════════
+   LOGIN RESPONSIVE — Mobile
+   ═══════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Removed custom login styles in favor of Tailwind */
+}

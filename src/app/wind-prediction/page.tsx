@@ -1,6 +1,7 @@
 "use client";
 
 import MainLayout from "@/components/layout/MainLayout";
+import { RequireAuth } from "@/lib/auth";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -279,6 +280,7 @@ export default function WindPredictionPage() {
   ];
 
   return (
+    <RequireAuth>
     <MainLayout>
       <div className="space-y-4 max-w-[1400px] mx-auto">
         {/* Page Header */}
@@ -987,5 +989,6 @@ export default function WindPredictionPage() {
         )}
       </div>
     </MainLayout>
+    </RequireAuth>
   );
 }

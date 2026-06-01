@@ -1,6 +1,7 @@
 "use client";
 
 import MainLayout from "@/components/layout/MainLayout";
+import { RequireAuth } from "@/lib/auth";
 import { useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -75,7 +76,7 @@ export default function ReportGeneratorPage() {
     if (!prompt || isLoading) return;
 
     const userMsg: Message = {
-      id: Date.now().toString(),
+      id: Math.random().toString(36).substring(7),
       role: "user",
       content: prompt,
       timestamp: new Date(),
@@ -123,6 +124,7 @@ export default function ReportGeneratorPage() {
   };
 
   return (
+    <RequireAuth>
     <MainLayout>
       <div className="max-w-[1400px] mx-auto">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -365,5 +367,6 @@ export default function ReportGeneratorPage() {
         </div>
       </div>
     </MainLayout>
+    </RequireAuth>
   );
 }

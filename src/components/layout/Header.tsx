@@ -1,8 +1,10 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
+import { useAuth } from "@/lib/auth";
 
 const routeTitles: Record<string, { title: string; description: string }> = {
   "/": { title: "Dashboard", description: "Overview & Ringkasan" },
@@ -16,6 +18,27 @@ const routeTitles: Record<string, { title: string; description: string }> = {
 
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout, userEmail } = useAuth();
+  
+  const [showProfile, setShowProfile] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setShowProfile(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    router.replace("/login");
+  };
+
   const current = routeTitles[pathname] ?? { title: "Nestra", description: "" };
 
   return (
@@ -48,12 +71,49 @@ export default function Header() {
 
 
       {/* User avatar */}
-      <div className="relative w-7 h-7 rounded-full overflow-hidden border-2 border-blue-200/50 cursor-pointer hover:ring-2 hover:ring-blue-300/40 hover:shadow-[0_0_12px_rgba(37,99,235,0.15)] transition-all flex-shrink-0">
-        <img
-          src="/images/profile.jpg"
-          alt="Sabil Aditia"
-          className="w-full h-full object-cover object-center"
-        />
+      <div className="relative" ref={profileRef}>
+        <div 
+          className="w-7 h-7 rounded-full overflow-hidden border-2 border-blue-200/50 cursor-pointer hover:ring-2 hover:ring-blue-300/40 hover:shadow-[0_0_12px_rgba(37,99,235,0.15)] transition-all flex-shrink-0"
+          onClick={() => setShowProfile(!showProfile)}
+        >
+          <img
+            src="/images/profile.jpg"
+            alt="User"
+            className="w-full h-full object-cover object-center"
+          />
+        </div>
+
+        {/* Profile Popup */}
+        {showProfile && (
+          <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+            <div className="p-3 border-b border-slate-100 dark:border-slate-700">
+              <p className="text-slate-800 dark:text-slate-200 text-sm font-semibold truncate">
+                {userEmail ? userEmail.split("@")[0] : "User"}
+              </p>
+              <p className="text-slate-500 dark:text-slate-400 text-xs truncate">
+                {userEmail || "admin@nestra.id"}
+              </p>
+            </div>
+            <div className="p-1">
+              <button 
+                className="w-full text-left px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                onClick={() => {
+                  setShowProfile(false);
+                  router.push('/settings');
+                }}
+              >
+                Pengaturan Akun
+              </button>
+              <button 
+                className="w-full text-left px-3 py-2 text-sm text-red-500 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors flex items-center gap-2"
+                onClick={handleLogout}
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Keluar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );

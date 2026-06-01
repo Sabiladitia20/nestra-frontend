@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
 import {
   LayoutDashboard,
   BarChart3,
@@ -12,6 +13,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
 
 const navItems = [
   {
@@ -43,6 +45,25 @@ const bottomItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout, userEmail } = useAuth();
+  const [showProfile, setShowProfile] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setShowProfile(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    router.replace("/login");
+  };
 
   return (
     <aside
@@ -54,8 +75,12 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 py-4 border-b border-white/[0.06]">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
-          <Wind className="w-4 h-4 text-white" />
+        <div className="w-8 h-8 rounded-lg overflow-hidden shadow-lg shadow-blue-500/20 flex-shrink-0">
+          <img
+            src="/images/nestra-logo.jpeg"
+            alt="Nestra AI"
+            className="w-full h-full object-cover"
+          />
         </div>
         <div>
           <span className="text-white font-bold text-base tracking-tight leading-none">
@@ -129,22 +154,58 @@ export default function Sidebar() {
       </div>
 
       {/* Footer info */}
-      <div className="px-3 py-3 border-t border-white/[0.06]">
-        <div className="flex items-center gap-2.5 px-2 py-2">
+      <div className="px-3 py-3 border-t border-white/[0.06] relative" ref={profileRef}>
+        {/* Profile Popup */}
+        {showProfile && (
+          <div className="absolute bottom-full left-3 mb-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2">
+            <div className="p-3 border-b border-slate-700">
+              <p className="text-slate-200 text-sm font-semibold truncate">
+                {userEmail ? userEmail.split("@")[0] : "User"}
+              </p>
+              <p className="text-slate-400 text-xs truncate">
+                {userEmail || "admin@nestra.id"}
+              </p>
+            </div>
+            <div className="p-1">
+              <button 
+                className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded transition-colors"
+                onClick={() => {
+                  setShowProfile(false);
+                  router.push('/settings');
+                }}
+              >
+                Pengaturan Akun
+              </button>
+              <button 
+                className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-slate-700 hover:text-red-300 rounded transition-colors flex items-center gap-2"
+                onClick={handleLogout}
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Keluar
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div 
+          className="flex items-center gap-2.5 px-2 py-2 cursor-pointer hover:bg-white/[0.05] rounded-lg transition-colors"
+          onClick={() => setShowProfile(!showProfile)}
+        >
           <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-cyan-400/30 flex-shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
             <img
               src="/images/profile.jpg"
-              alt="Sabil Aditia"
+              alt="User"
               className="w-full h-full object-cover object-center"
             />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-slate-200 text-xs font-semibold truncate">Sabil Aditia</p>
-            <p className="text-slate-500 text-[10px] truncate">Engineer · Admin</p>
+            <p className="text-slate-200 text-xs font-semibold truncate">
+              {userEmail ? userEmail.split("@")[0] : "User"}
+            </p>
+            <p className="text-slate-500 text-[10px] truncate">
+              {userEmail || "Engineer · Admin"}
+            </p>
           </div>
-          <button className="p-1 rounded hover:bg-white/[0.08] text-slate-500 hover:text-slate-300 transition-colors">
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
         </div>
       </div>
     </aside>

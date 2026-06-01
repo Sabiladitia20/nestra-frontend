@@ -1,6 +1,7 @@
 "use client";
 
 import MainLayout from "@/components/layout/MainLayout";
+import { RequireAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -113,6 +114,7 @@ export default function SiteAssessmentPage() {
   );
 
   return (
+    <RequireAuth>
     <MainLayout>
       <div className="space-y-4 max-w-[1400px] mx-auto">
         {/* Header */}
@@ -300,5 +302,6 @@ export default function SiteAssessmentPage() {
         </div>
       </div>
     </MainLayout>
+    </RequireAuth>
   );
 }
