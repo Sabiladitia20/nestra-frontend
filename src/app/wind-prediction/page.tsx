@@ -327,7 +327,7 @@ export default function WindPredictionPage() {
                     Pilih Lokasi PLTB
                   </label>
                   <Select value={selectedLocation} onValueChange={(val) => { if (val) setSelectedLocation(val); }}>
-                    <SelectTrigger className="h-8 text-xs bg-white" id="predict-location-select">
+                    <SelectTrigger className="h-8 text-xs bg-white capitalize" id="predict-location-select">
                       <SelectValue placeholder="Pilih Lokasi" />
                     </SelectTrigger>
                     <SelectContent>
@@ -335,7 +335,6 @@ export default function WindPredictionPage() {
                         <SelectItem key={loc.id} value={loc.id}>
                           <span className="flex items-center gap-1.5 justify-between w-full">
                             <span className="font-medium">{loc.name}</span>
-                            <span className="text-[9px] text-slate-400 capitalize"> ({loc.scenario})</span>
                           </span>
                         </SelectItem>
                       ))}
