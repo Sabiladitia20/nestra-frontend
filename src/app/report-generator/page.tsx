@@ -31,7 +31,7 @@ interface QueryResponse {
   elapsed?: number;
 }
 
-const BACKEND_URL = "https://nestrag.duckdns.org";
+const BACKEND_URL = "/api/chat";
 
 const EXAMPLE_PROMPTS = [
   { label: "Analisis Kelayakan",   prompt: "Analisis kelayakan pembangunan PLTB di daerah ini", icon: CheckCircle2 },
