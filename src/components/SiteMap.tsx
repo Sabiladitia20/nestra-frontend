@@ -1,20 +1,33 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { SiteLocation } from "@/lib/mockData";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+export interface SiteMapLocation {
+  id: string;
+  shortName: string;
+  province: string;
+  coordinates: string;
+  lat: number;
+  lng: number;
+  feasibilityScore: number;
+  status: string;
+}
+
 interface SiteMapProps {
-  locations: SiteLocation[];
+  locations: SiteMapLocation[];
   selectedId: string;
   onSelect: (id: string) => void;
 }
 
 const STATUS_COLORS: Record<string, string> = {
+  sangat_layak: "#10b981",
   layak: "#10b981",
   cukup: "#f59e0b",
+  kurang_layak: "#f59e0b",
   kurang: "#ef4444",
+  tidak_layak: "#ef4444",
 };
 
 export default function SiteMap({ locations, selectedId, onSelect }: SiteMapProps) {
@@ -116,9 +129,10 @@ export default function SiteMap({ locations, selectedId, onSelect }: SiteMapProp
         <p className="text-[9px] text-white/60 font-semibold uppercase tracking-wider mb-1">Status</p>
         <div className="flex flex-col gap-1">
           {[
+            { color: "#10b981", label: "Sangat Layak" },
             { color: "#10b981", label: "Layak" },
-            { color: "#f59e0b", label: "Cukup" },
-            { color: "#ef4444", label: "Kurang" },
+            { color: "#f59e0b", label: "Kurang Layak" },
+            { color: "#ef4444", label: "Tidak Layak" },
           ].map((l) => (
             <div key={l.label} className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full" style={{ background: l.color }} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import MainLayout from "@/components/layout/MainLayout";
 
@@ -12,17 +12,17 @@ import {
   MapPin,
   Ruler,
   Globe2,
-  CalendarDays,
   CheckCircle2,
   Info,
   ChevronDown,
   Mountain,
+  RefreshCw,
+  AlertTriangle,
+  Gauge,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
   XAxis,
@@ -33,14 +33,21 @@ import {
   ResponsiveContainer,
   ComposedChart,
   Area,
+  Line,
 } from "recharts";
 import {
-  allLocations,
-  siteKpiData,
+  getDashboardData,
+  type DashboardSite,
+} from "@/lib/api";
+import {
+  allLocations as fallbackLocations,
+  siteKpiData as fallbackKpiData,
   siteMonthlyWindData,
 } from "@/lib/mockData";
 
 const SiteMap = dynamic(() => import("@/components/SiteMap"), { ssr: false });
+
+// ── KPI Config ──────────────────────────────────────────────────────────────
 
 const KPI_CONFIG = {
   blue: {
@@ -88,25 +95,168 @@ const KPI_ICONS: Record<string, React.ElementType> = {
   Star,
 };
 
+// ── Status Styles (supports 4 API categories) ──────────────────────────────
+
 const STATUS_STYLE: Record<string, { label: string; class: string; color: string }> = {
+  sangat_layak: { label: "SANGAT LAYAK", class: "status-layak", color: "#10b981" },
   layak: { label: "LAYAK", class: "status-layak", color: "#10b981" },
   cukup: { label: "CUKUP LAYAK", class: "status-cukup", color: "#f59e0b" },
+  kurang_layak: { label: "KURANG LAYAK", class: "status-cukup", color: "#f59e0b" },
   kurang: { label: "KURANG LAYAK", class: "status-kurang", color: "#ef4444" },
+  tidak_layak: { label: "TIDAK LAYAK", class: "status-kurang", color: "#ef4444" },
 };
+
+// ── KPI Generator from API Data ─────────────────────────────────────────────
+
+function generateKpis(site: DashboardSite) {
+  const m = site.metrics;
+  const wpd = m.windPowerDensity;
+  // Estimate annual energy from WPD (simplified)
+  const annualEnergy = Math.round(wpd * 3.6 * 10) / 10;
+  // Capacity factor approximation from operational hours percentage
+  const capacityFactor = m.operationalHoursPct;
+
+  return [
+    {
+      id: "avg-speed",
+      label: "Rata-rata Kecepatan Angin",
+      value: m.meanWindSpeed.toFixed(2),
+      unit: "m/s",
+      change: `R² ${m.modelR2.toFixed(3)}`,
+      trend: "up",
+      color: "blue",
+      icon: "Wind",
+      description: "Diukur pada ketinggian 10m (WS10M) — Data ML",
+    },
+    {
+      id: "wind-power-density",
+      label: "Wind Power Density",
+      value: wpd.toFixed(1),
+      unit: "W/m²",
+      change: `CV ${m.windStabilityCV.toFixed(2)}`,
+      trend: wpd > 50 ? "up" : "down",
+      color: "cyan",
+      icon: "Zap",
+      description: "Kerapatan daya angin rata-rata",
+    },
+    {
+      id: "operational-hours",
+      label: "Jam Operasional",
+      value: capacityFactor.toFixed(1),
+      unit: "%",
+      change: `${site.bestScenario}`,
+      trend: capacityFactor > 60 ? "up" : "down",
+      color: "green",
+      icon: "TrendingUp",
+      description: "Persentase jam operasi efektif",
+    },
+    {
+      id: "feasibility",
+      label: "Tingkat Kelayakan",
+      value: site.feasibilityScore.toFixed(1),
+      unit: "/100",
+      change: STATUS_STYLE[site.status]?.label ?? site.status,
+      trend: site.feasibilityScore > 70 ? "up" : "down",
+      color: "amber",
+      icon: "Star",
+      description: `Skor kelayakan komprehensif · Rank #${site.rank}`,
+    },
+  ];
+}
+
+// ── Loading Skeleton ────────────────────────────────────────────────────────
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-4 max-w-[1400px] mx-auto animate-pulse">
+      <div className="h-8 bg-slate-200 rounded w-48" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-28 bg-slate-100 rounded-xl border border-slate-200" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-3">
+        <div className="xl:col-span-3 h-[360px] bg-slate-100 rounded-xl" />
+        <div className="xl:col-span-2 h-[360px] bg-slate-100 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+// ── Main Dashboard Component ────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const [selectedSiteId, setSelectedSiteId] = useState("pandeglang");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [sites, setSites] = useState<DashboardSite[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [backendOnline, setBackendOnline] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("selectedSiteId");
-      if (saved && allLocations.some((loc) => loc.id === saved)) {
+  // ── Fetch data from API ─────────────────────────────────────────────────
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await getDashboardData();
+      setSites(data.sites);
+      setBackendOnline(true);
+
+      // Restore saved location if valid
+      const saved = typeof window !== "undefined" ? localStorage.getItem("selectedSiteId") : null;
+      if (saved && data.sites.some((s) => s.id === saved)) {
+        setSelectedSiteId(saved);
+      } else if (data.sites.length > 0) {
+        setSelectedSiteId(data.sites[0].id);
+      }
+    } catch (err) {
+      console.error("Dashboard API error, falling back to mock data:", err);
+      setBackendOnline(false);
+      setError("API ML tidak tersedia. Menampilkan data fallback.");
+
+      // Fallback to mockData
+      const fallbackSites: DashboardSite[] = fallbackLocations.map((loc, idx) => ({
+        id: loc.id,
+        name: loc.name,
+        shortName: loc.shortName,
+        province: loc.province,
+        coordinates: loc.coordinates,
+        lat: loc.lat,
+        lng: loc.lng,
+        area: loc.area,
+        elevation: loc.elevation,
+        climate: loc.climate,
+        dataSource: loc.dataSource,
+        feasibilityScore: loc.feasibilityScore,
+        status: loc.status,
+        category: "-",
+        bestScenario: "-",
+        rank: idx + 1,
+        metrics: {
+          meanWindSpeed: 0,
+          windPowerDensity: 0,
+          operationalHoursPct: 0,
+          windStabilityCV: 0,
+          modelR2: 0,
+        },
+        modelMetrics: null,
+      }));
+      setSites(fallbackSites);
+
+      const saved = typeof window !== "undefined" ? localStorage.getItem("selectedSiteId") : null;
+      if (saved && fallbackSites.some((s) => s.id === saved)) {
         setSelectedSiteId(saved);
       }
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // ── Persist selection ───────────────────────────────────────────────────
   const handleSelectSite = (id: string) => {
     setSelectedSiteId(id);
     if (typeof window !== "undefined") {
@@ -114,18 +264,52 @@ export default function DashboardPage() {
     }
   };
 
+  // ── Derived Data ────────────────────────────────────────────────────────
   const site = useMemo(
-    () => allLocations.find((l) => l.id === selectedSiteId) ?? allLocations[0],
-    [selectedSiteId]
+    () => sites.find((l) => l.id === selectedSiteId) ?? sites[0],
+    [selectedSiteId, sites]
   );
-  const kpis = siteKpiData[selectedSiteId] ?? siteKpiData.pandeglang;
+
+  const kpis = useMemo(() => {
+    if (!site) return [];
+    // If backend is online and we have real metrics, generate from API
+    if (backendOnline && site.metrics.meanWindSpeed > 0) {
+      return generateKpis(site);
+    }
+    // Fallback to mock KPI data
+    return fallbackKpiData[selectedSiteId] ?? fallbackKpiData.pandeglang ?? [];
+  }, [site, backendOnline, selectedSiteId]);
+
   const windData = siteMonthlyWindData[selectedSiteId] ?? siteMonthlyWindData.pandeglang;
-  const statusInfo = STATUS_STYLE[site.status];
+  const statusInfo = site ? (STATUS_STYLE[site.status] ?? STATUS_STYLE.layak) : STATUS_STYLE.layak;
+
+  // ── Loading State ───────────────────────────────────────────────────────
+  if (isLoading || !site) {
+    return (
+      <MainLayout>
+        <DashboardSkeleton />
+      </MainLayout>
+    );
+  }
 
   return (
     
     <MainLayout>
       <div className="space-y-4 max-w-[1400px] mx-auto">
+        {/* Backend Status Banner */}
+        {!backendOnline && error && (
+          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs">
+            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+            <span>{error}</span>
+            <button
+              onClick={fetchData}
+              className="ml-auto flex items-center gap-1 px-2 py-1 bg-amber-100 hover:bg-amber-200 rounded text-[10px] font-semibold transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" /> Coba Lagi
+            </button>
+          </div>
+        )}
+
         {/* Page Title + Location Selector */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -135,6 +319,14 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Backend Online Badge */}
+            {backendOnline && (
+              <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                Live API
+              </Badge>
+            )}
+
             {/* Location Selector Dropdown */}
             <div className="relative">
               <button
@@ -153,8 +345,8 @@ export default function DashboardPage() {
                     <div className="px-3 py-2 border-b border-slate-100">
                       <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Pilih Lokasi PLTB</p>
                     </div>
-                    {allLocations.map((loc) => {
-                      const st = STATUS_STYLE[loc.status];
+                    {sites.map((loc) => {
+                      const st = STATUS_STYLE[loc.status] ?? STATUS_STYLE.layak;
                       const isActive = loc.id === selectedSiteId;
                       return (
                         <button
@@ -173,7 +365,7 @@ export default function DashboardPage() {
                           </div>
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             <span className="text-[10px] font-bold" style={{ color: st.color }}>
-                              {loc.feasibilityScore}/100
+                              {loc.feasibilityScore.toFixed(1)}/100
                             </span>
                             <div className="w-1.5 h-1.5 rounded-full" style={{ background: st.color }} />
                           </div>
@@ -224,7 +416,7 @@ export default function DashboardPage() {
                     <Icon className="w-4 h-4" />
                   </div>
                   <span className={`text-xs font-medium ${cfg.change}`}>
-                    ↑ {kpi.change.split(" ")[0]}
+                    {kpi.change}
                   </span>
                 </div>
                 <div>
@@ -250,12 +442,12 @@ export default function DashboardPage() {
                 <p className="text-[11px] text-slate-400 mt-0.5">Klik marker untuk memilih lokasi</p>
               </div>
               <Badge variant="outline" className="text-[10px] border-slate-200 text-slate-500">
-                {allLocations.length} Lokasi
+                {sites.length} Lokasi
               </Badge>
             </div>
             <div className="h-[300px] rounded-xl overflow-hidden">
               <SiteMap
-                locations={allLocations}
+                locations={sites}
                 selectedId={selectedSiteId}
                 onSelect={handleSelectSite}
               />
@@ -266,7 +458,7 @@ export default function DashboardPage() {
           <Card className="xl:col-span-2 p-4 glass-card flex flex-col rounded-xl">
             <h3 className="font-semibold text-slate-800 text-sm mb-0.5">Status Rekomendasi</h3>
             <p className="text-[11px] text-slate-400 mb-3">
-              {site.shortName} — Berdasarkan analisis multi-kriteria
+              {site.shortName} — Berdasarkan analisis multi-kriteria ML
             </p>
 
             {/* Big status */}
@@ -278,7 +470,7 @@ export default function DashboardPage() {
                     background: `linear-gradient(135deg, ${statusInfo.color}dd, ${statusInfo.color})`,
                   }}
                 >
-                  <span className="text-2xl font-extrabold">{site.feasibilityScore}</span>
+                  <span className="text-2xl font-extrabold">{site.feasibilityScore.toFixed(1)}</span>
                   <span className="text-[10px] font-medium opacity-80">/100</span>
                 </div>
                 <div
@@ -292,35 +484,66 @@ export default function DashboardPage() {
                 {statusInfo.label}
               </h2>
               <p className="text-xs text-slate-500 text-center mt-0.5">
-                {site.status === "layak"
+                {site.status === "sangat_layak"
                   ? "Sangat direkomendasikan untuk PLTB"
-                  : site.status === "cukup"
+                  : site.status === "layak"
+                  ? "Direkomendasikan untuk PLTB"
+                  : site.status === "kurang_layak" || site.status === "cukup"
                   ? "Perlu kajian lebih lanjut"
                   : "Tidak direkomendasikan"}
               </p>
+              {site.category && site.category !== "-" && (
+                <Badge variant="outline" className="mt-1.5 text-[9px] border-slate-200 text-slate-500">
+                  {site.category}
+                </Badge>
+              )}
             </div>
 
-            {/* Criteria bars */}
+            {/* Criteria bars — from real API metrics */}
             <div className="space-y-2.5 mt-1">
-              {[
-                { label: "Kecepatan Angin", score: Math.min(100, site.feasibilityScore + 1), color: "#2563eb" },
-                { label: "Infrastruktur", score: Math.max(60, site.feasibilityScore - 12), color: "#06b6d4" },
-                { label: "Lingkungan", score: Math.min(100, site.feasibilityScore + 4), color: "#10b981" },
-                { label: "Regulasi", score: Math.max(60, site.feasibilityScore - 9), color: "#f59e0b" },
-              ].map((c) => (
-                <div key={c.label}>
-                  <div className="flex justify-between text-[11px] text-slate-600 mb-0.5">
-                    <span className="font-medium">{c.label}</span>
-                    <span className="font-bold">{c.score}%</span>
+              {backendOnline && site.metrics.meanWindSpeed > 0 ? (
+                // Real API-driven criteria
+                [
+                  { label: "Kecepatan Angin", score: Math.min(100, Math.round(site.metrics.meanWindSpeed * 15)), color: "#2563eb" },
+                  { label: "Stabilitas (CV)", score: Math.round((1 - site.metrics.windStabilityCV) * 100), color: "#06b6d4" },
+                  { label: "Jam Operasional", score: Math.round(site.metrics.operationalHoursPct), color: "#10b981" },
+                  { label: "Akurasi Model", score: Math.round(site.metrics.modelR2 * 100), color: "#f59e0b" },
+                ].map((c) => (
+                  <div key={c.label}>
+                    <div className="flex justify-between text-[11px] text-slate-600 mb-0.5">
+                      <span className="font-medium">{c.label}</span>
+                      <span className="font-bold">{c.score}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-slate-100">
+                      <div
+                        className="h-1.5 rounded-full transition-all duration-700"
+                        style={{ width: `${c.score}%`, background: c.color }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-1.5 rounded-full bg-slate-100">
-                    <div
-                      className="h-1.5 rounded-full transition-all duration-700"
-                      style={{ width: `${c.score}%`, background: c.color }}
-                    />
+                ))
+              ) : (
+                // Fallback criteria
+                [
+                  { label: "Kecepatan Angin", score: Math.min(100, site.feasibilityScore + 1), color: "#2563eb" },
+                  { label: "Infrastruktur", score: Math.max(60, site.feasibilityScore - 12), color: "#06b6d4" },
+                  { label: "Lingkungan", score: Math.min(100, site.feasibilityScore + 4), color: "#10b981" },
+                  { label: "Regulasi", score: Math.max(60, site.feasibilityScore - 9), color: "#f59e0b" },
+                ].map((c) => (
+                  <div key={c.label}>
+                    <div className="flex justify-between text-[11px] text-slate-600 mb-0.5">
+                      <span className="font-medium">{c.label}</span>
+                      <span className="font-bold">{c.score}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-slate-100">
+                      <div
+                        className="h-1.5 rounded-full transition-all duration-700"
+                        style={{ width: `${c.score}%`, background: c.color }}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             {/* Info */}
@@ -328,6 +551,9 @@ export default function DashboardPage() {
               <Info className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
               <p className="text-[10px] text-blue-700 leading-relaxed">
                 Lokasi <strong>{site.shortName}</strong> — {site.province} · Elevasi {site.elevation}
+                {backendOnline && site.bestScenario !== "-" && (
+                  <> · Skenario terbaik: <strong>{site.bestScenario}</strong></>
+                )}
               </p>
             </div>
           </Card>
@@ -403,7 +629,7 @@ export default function DashboardPage() {
                   contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
                 />
                 <Bar dataKey="energy" radius={[4, 4, 0, 0]} name="Energi (GWh)">
-                  {windData.map((_, i) => (
+                  {windData.map((_: any, i: number) => (
                     <rect
                       key={i}
                       fill={`hsl(${215 + (i / 11) * 25}, 75%, ${45 + (i / 11) * 18}%)`}
