@@ -102,7 +102,9 @@ export interface LocationInfo {
 
 export const API_BASE_URL = "https://nestrag.duckdns.org/ml";
 export const API_VERSION = "v1";
-export const API_PREFIX = `${API_BASE_URL}/api/${API_VERSION}`;
+// Route through Next.js API proxy to bypass CORS restrictions
+// The proxy at /api/ml/[...path] forwards to the ML backend
+export const API_PREFIX = "/api/ml";
 
 // ─── Fetch Wrapper ──────────────────────────────────────────────────────────
 

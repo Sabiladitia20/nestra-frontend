@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { API_PREFIX } from "@/lib/api";
+
+// RAG query service lives at root, separate from ML API (/ml/api/v1)
+const RAG_URL = "https://nestrag.duckdns.org/query";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const res = await fetch(`${API_PREFIX}/query`, {
+    const res = await fetch(RAG_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
