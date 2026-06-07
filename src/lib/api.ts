@@ -100,9 +100,9 @@ export interface LocationInfo {
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
-const API_BASE_URL = "https://nestrag.duckdns.org/ml";
-const API_VERSION = "v1";
-const API_PREFIX = `${API_BASE_URL}/api/${API_VERSION}`;
+export const API_BASE_URL = "https://nestrag.duckdns.org/ml";
+export const API_VERSION = "v1";
+export const API_PREFIX = `${API_BASE_URL}/api/${API_VERSION}`;
 
 // ─── Fetch Wrapper ──────────────────────────────────────────────────────────
 

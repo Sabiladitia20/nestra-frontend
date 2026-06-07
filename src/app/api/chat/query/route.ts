@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { API_PREFIX } from "@/lib/api";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const res = await fetch("https://nestrag.duckdns.org/query", {
+    const res = await fetch(`${API_PREFIX}/query`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
