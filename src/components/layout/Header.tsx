@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, LogOut, Menu } from "lucide-react";
+import { ChevronRight, LogOut, Menu, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
@@ -20,6 +20,8 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userFullName, setUserFullName] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const { toggle } = useMobileMenu();
   
   const [showProfile, setShowProfile] = useState(false);
@@ -32,6 +34,12 @@ export default function Header() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserEmail(user.email ?? null);
+        if (user.user_metadata?.avatar_url) {
+          setAvatarUrl(user.user_metadata.avatar_url);
+        }
+        if (user.user_metadata?.full_name) {
+          setUserFullName(user.user_metadata.full_name);
+        }
       }
     };
     fetchUser();
@@ -97,14 +105,18 @@ export default function Header() {
       {/* User avatar */}
       <div className="relative" ref={profileRef}>
         <div 
-          className="w-7 h-7 rounded-full overflow-hidden border-2 border-blue-200/50 cursor-pointer hover:ring-2 hover:ring-blue-300/40 hover:shadow-[0_0_12px_rgba(37,99,235,0.15)] transition-all flex-shrink-0"
+          className="w-7 h-7 rounded-full overflow-hidden border-2 border-blue-200/50 cursor-pointer hover:ring-2 hover:ring-blue-300/40 hover:shadow-[0_0_12px_rgba(37,99,235,0.15)] transition-all flex-shrink-0 bg-slate-100 flex items-center justify-center text-slate-400"
           onClick={() => setShowProfile(!showProfile)}
         >
-          <img
-            src="/images/profile.jpg"
-            alt="User"
-            className="w-full h-full object-cover object-center"
-          />
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="User"
+              className="w-full h-full object-cover object-center"
+            />
+          ) : (
+            <User className="w-4 h-4" />
+          )}
         </div>
 
         {/* Profile Popup */}
@@ -112,7 +124,7 @@ export default function Header() {
           <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
             <div className="p-3 border-b border-slate-100 dark:border-slate-700">
               <p className="text-slate-800 dark:text-slate-200 text-sm font-semibold truncate">
-                {userEmail ? userEmail.split("@")[0] : "User"}
+                {userFullName || (userEmail ? userEmail.split("@")[0] : "User")}
               </p>
               <p className="text-slate-500 dark:text-slate-400 text-xs truncate">
                 {userEmail || "admin@nestra.id"}

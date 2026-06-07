@@ -48,6 +48,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userFullName, setUserFullName] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const { isOpen, close } = useMobileMenu();
@@ -59,6 +61,12 @@ export default function Sidebar() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserEmail(user.email ?? null);
+        if (user.user_metadata?.avatar_url) {
+          setAvatarUrl(user.user_metadata.avatar_url);
+        }
+        if (user.user_metadata?.full_name) {
+          setUserFullName(user.user_metadata.full_name);
+        }
       }
     };
     fetchUser();
@@ -198,7 +206,7 @@ export default function Sidebar() {
           <div className="absolute bottom-full left-3 mb-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2">
             <div className="p-3 border-b border-slate-700">
               <p className="text-slate-200 text-sm font-semibold truncate">
-                {userEmail ? userEmail.split("@")[0] : "User"}
+                {userFullName || (userEmail ? userEmail.split("@")[0] : "User")}
               </p>
               <p className="text-slate-400 text-xs truncate">
                 {userEmail || "admin@nestra.id"}
@@ -229,16 +237,22 @@ export default function Sidebar() {
           className="flex items-center gap-2.5 px-2 py-2 cursor-pointer hover:bg-white/[0.05] rounded-lg transition-colors"
           onClick={() => setShowProfile(!showProfile)}
         >
-          <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-cyan-400/30 flex-shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
-            <img
-              src="/images/profile.jpg"
-              alt="User"
-              className="w-full h-full object-cover object-center"
-            />
+          <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-cyan-400/30 flex-shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.15)] bg-slate-800 flex items-center justify-center">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="User"
+                className="w-full h-full object-cover object-center"
+              />
+            ) : (
+              <span className="text-slate-400 text-xs font-bold">
+                {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
+              </span>
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-slate-200 text-xs font-semibold truncate">
-              {userEmail ? userEmail.split("@")[0] : "User"}
+              {userFullName || (userEmail ? userEmail.split("@")[0] : "User")}
             </p>
             <p className="text-slate-500 text-[10px] truncate">
               {userEmail || "Engineer · Admin"}
