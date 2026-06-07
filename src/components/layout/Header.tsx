@@ -1,10 +1,10 @@
 "use client";
 
-import { ChevronRight, LogOut } from "lucide-react";
+import { ChevronRight, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
-import { useAuth } from "@/lib/auth";
+import { useMobileMenu } from "@/contexts/MobileMenuContext";
 
 const routeTitles: Record<string, { title: string; description: string }> = {
   "/": { title: "Dashboard", description: "Overview & Ringkasan" },
@@ -20,6 +20,7 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const { toggle } = useMobileMenu();
   
   const [showProfile, setShowProfile] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -57,7 +58,7 @@ export default function Header() {
 
   return (
     <header
-      className="fixed top-0 left-56 right-0 h-14 z-30 flex items-center px-5 gap-3"
+      className="fixed top-0 left-0 md:left-56 right-0 h-14 z-30 flex items-center px-4 md:px-5 gap-3 transition-all duration-300"
       style={{
         background: "var(--header-bg, rgba(240, 242, 248, 0.7))",
         backdropFilter: "blur(16px) saturate(180%)",
@@ -65,12 +66,21 @@ export default function Header() {
         borderBottom: "1px solid var(--border)",
       }}
     >
+      {/* Mobile Menu Button */}
+      <button 
+        onClick={toggle}
+        className="md:hidden p-1.5 -ml-1 text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 rounded-md transition-colors"
+        aria-label="Toggle menu"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
       {/* Breadcrumb + Title */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1 text-xs text-slate-400">
-          <span>Nestra</span>
-          <ChevronRight className="w-3 h-3" />
-          <span className="text-slate-700 font-medium">{current.title}</span>
+          <span className="hidden sm:inline">Nestra</span>
+          <ChevronRight className="w-3 h-3 hidden sm:inline" />
+          <span className="text-slate-700 font-medium truncate">{current.title}</span>
         </div>
       </div>
 

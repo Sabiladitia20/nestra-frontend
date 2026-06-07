@@ -35,22 +35,29 @@ export default function RegisterPage() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      }
     });
 
     if (signUpError) {
       setError(signUpError.message || "Gagal mendaftar. Silakan coba lagi.");
       setIsLoading(false);
+    } else if (data.session) {
+      // Auto-logged in after signup (email confirmation disabled)
+      router.refresh();
+      router.replace("/");
     } else {
-      setSuccess("Pendaftaran berhasil! Silakan periksa email Anda untuk verifikasi atau langsung login jika auto-login aktif.");
-      setIsLoading(false);
-      // Wait a moment before redirecting
-      setTimeout(() => {
+      // Fallback: login manually after signup
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (loginError) {
+        setSuccess("Pendaftaran berhasil! Silakan login dengan akun Anda.");
+        setIsLoading(false);
+        setTimeout(() => router.replace("/login"), 1500);
+      } else {
         router.refresh();
         router.replace("/");
-      }, 2000);
+      }
     }
   };
 

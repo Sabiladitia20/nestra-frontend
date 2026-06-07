@@ -11,9 +11,10 @@ import {
   Settings,
   HelpCircle,
   LogOut,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/auth";
+import { useMobileMenu } from "@/contexts/MobileMenuContext";
 
 const navItems = [
   {
@@ -49,6 +50,7 @@ export default function Sidebar() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const { isOpen, close } = useMobileMenu();
   
   useEffect(() => {
     const fetchUser = async () => {
@@ -80,69 +82,90 @@ export default function Sidebar() {
   };
 
   return (
-    <aside
-      className="fixed left-0 top-0 h-screen w-56 flex flex-col z-40 sidebar-scroll overflow-y-auto"
-      style={{
-        background: "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)",
-        borderRight: "1px solid rgba(255,255,255,0.06)",
-      }}
-    >
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-4 border-b border-white/[0.06]">
-        <div className="w-8 h-8 rounded-lg overflow-hidden shadow-lg shadow-blue-500/20 flex-shrink-0">
-          <img
-            src="/images/nestra-logo.jpeg"
-            alt="Nestra AI"
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <div>
-          <span className="text-white font-bold text-base tracking-tight leading-none">
-            Nestra<span className="text-cyan-400">AI</span>
-          </span>
-          <p className="text-slate-500 text-[9px] font-medium tracking-wider uppercase mt-0.5">
-            PLTB Analytics
-          </p>
-        </div>
-      </div>
+    <>
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden"
+          onClick={close}
+        />
+      )}
 
-      {/* Nav section */}
-      <div className="flex-1 px-3 py-3">
-        <p className="text-slate-500 text-[10px] font-semibold tracking-widest uppercase px-2 mb-2">
-          Menu
-        </p>
-        <nav className="space-y-0.5">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "group flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm relative",
-                  isActive
-                    ? "bg-blue-500/15 text-white font-semibold"
-                    : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200"
-                )}
-              >
-                {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-gradient-to-b from-blue-400 to-cyan-400" />
-                )}
-                <Icon
+      <aside
+        className={cn(
+          "fixed left-0 top-0 h-screen w-56 flex flex-col z-50 sidebar-scroll overflow-y-auto transition-transform duration-300 md:translate-x-0",
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+        style={{
+          background: "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)",
+          borderRight: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        {/* Logo & Mobile Close */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg overflow-hidden shadow-lg shadow-blue-500/20 flex-shrink-0">
+              <img
+                src="/images/nestra-logo.jpeg"
+                alt="Nestra AI"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div>
+              <span className="text-white font-bold text-base tracking-tight leading-none">
+                Nestra<span className="text-cyan-400">AI</span>
+              </span>
+              <p className="text-slate-500 text-[9px] font-medium tracking-wider uppercase mt-0.5">
+                PLTB Analytics
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={close}
+            className="md:hidden text-slate-400 hover:text-white p-1 rounded-md"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Nav section */}
+        <div className="flex-1 px-3 py-3">
+          <p className="text-slate-500 text-[10px] font-semibold tracking-widest uppercase px-2 mb-2">
+            Menu
+          </p>
+          <nav className="space-y-0.5">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={close}
                   className={cn(
-                    "w-4 h-4 flex-shrink-0",
-                    isActive ? "text-cyan-400" : "text-slate-500 group-hover:text-slate-300"
+                    "group flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm relative",
+                    isActive
+                      ? "bg-blue-500/15 text-white font-semibold"
+                      : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200"
                   )}
-                />
-                <span>{item.label}</span>
-                {isActive && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.6)]" />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+                >
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-gradient-to-b from-blue-400 to-cyan-400" />
+                  )}
+                  <Icon
+                    className={cn(
+                      "w-4 h-4 flex-shrink-0",
+                      isActive ? "text-cyan-400" : "text-slate-500 group-hover:text-slate-300"
+                    )}
+                  />
+                  <span>{item.label}</span>
+                  {isActive && (
+                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.6)]" />
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
 
         {/* Divider */}
         <div className="my-3 border-t border-white/[0.06]" />
@@ -157,6 +180,7 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={close}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/[0.05] transition-all duration-200 text-sm"
               >
                 <Icon className="w-4 h-4" />
@@ -223,5 +247,6 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }
