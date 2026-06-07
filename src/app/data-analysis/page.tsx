@@ -4,37 +4,33 @@ import MainLayout from "@/components/layout/MainLayout";
 import { RequireAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter, ZAxis,
+  Tooltip, Legend, ResponsiveContainer,
   ReferenceLine, ComposedChart, Area,
 } from "recharts";
+import { getRanking, getLocations } from "@/lib/api";
+import type { RankingSite, LocationInfo } from "@/lib/api";
 import {
-  allLocations,
-  siteMonthlyWindData,
-  siteKpiData,
-  windSpeedDistribution,
-  windSpeedFrequencyBins,
-  dailyWindSpeed,
-  diurnalAnalysisData,
-  diurnalSummaryTable,
-} from "@/lib/mockData";
-import { useState, useEffect, useMemo } from "react";
-import { MapPin, ChevronDown } from "lucide-react";
+  buildSiteLocation,
+  buildKpis,
+  generateMonthlyWind,
+  generateWeibullDistribution,
+  generateFrequencyBins,
+  generateDailyWind,
+  generateDiurnalData,
+  generateHourlyPattern,
+  generateWindRose,
+  generateYearlyTrend,
+} from "@/lib/windAnalysis";
+import type { SiteLocationData } from "@/lib/windAnalysis";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { MapPin, ChevronDown, Loader2 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { Download, Filter, RefreshCw, TrendingUp, Database, Info, Compass, BarChart3, Calendar, Clock } from "lucide-react";
+import { Database, Filter, Compass, BarChart3, Calendar, Clock } from "lucide-react";
 
 const WindRoseChart = dynamic(() => import("@/components/WindRoseChart"), { ssr: false });
-
-const hourlyPattern = Array.from({ length: 24 }, (_, h) => ({
-  hour: `${h.toString().padStart(2, "0")}:00`,
-  speed: 5.5 + Math.sin((h - 6) * Math.PI / 12) * 3.2 + (Math.random() - 0.5) * 0.8,
-  turbulence: 0.06 + Math.random() * 0.06,
-}));
-
-
 
 const STATUS_STYLE: Record<string, { label: string; class: string; color: string }> = {
   layak: { label: "LAYAK", class: "status-layak", color: "#10b981" },
@@ -42,14 +38,14 @@ const STATUS_STYLE: Record<string, { label: string; class: string; color: string
   kurang: { label: "KURANG LAYAK", class: "status-kurang", color: "#ef4444" },
 };
 
-// Deterministic hash helpers for dynamic multi-year wind variability simulation
+// Deterministic hash helpers for year filtering
 const getYearFactor = (siteId: string, year: number) => {
   let hash = 0;
   const str = siteId + year;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const percentChange = ((Math.abs(hash) % 17) - 8) / 100; // -0.08 s.d +0.08
+  const percentChange = ((Math.abs(hash) % 17) - 8) / 100;
   return 1 + percentChange;
 };
 
@@ -59,24 +55,55 @@ const getMonthFactor = (siteId: string, year: number, monthIndex: number) => {
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const percentChange = ((Math.abs(hash) % 11) - 5) / 100; // -0.05 s.d +0.05
+  const percentChange = ((Math.abs(hash) % 11) - 5) / 100;
   return 1 + percentChange;
 };
+
+interface BackendData {
+  ranking: RankingSite[];
+  locations: LocationInfo[];
+}
 
 export default function DataAnalysisPage() {
   const [selectedSiteId, setSelectedSiteId] = useState("pandeglang");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
+  const [backendData, setBackendData] = useState<BackendData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch real data from backend
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [rankingData, locationData] = await Promise.all([
+        getRanking(),
+        getLocations(),
+      ]);
+      setBackendData({ ranking: rankingData, locations: locationData });
+    } catch (err) {
+      console.error("Failed to fetch backend data:", err);
+      setError("Gagal memuat data dari backend ML. Pastikan server aktif.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    fetchData();
+  }, [fetchData]);
+
+  // Restore saved site selection
+  useEffect(() => {
+    if (typeof window !== "undefined" && backendData) {
       const saved = localStorage.getItem("selectedSiteId");
-      if (saved && allLocations.some((loc) => loc.id === saved)) {
+      if (saved && backendData.ranking.some((r) => r.id === saved)) {
         setSelectedSiteId(saved);
       }
     }
-  }, []);
+  }, [backendData]);
 
   const handleSelectSite = (id: string) => {
     setSelectedSiteId(id);
@@ -85,97 +112,69 @@ export default function DataAnalysisPage() {
     }
   };
 
+  // ── Derived data from backend ──────────────────────────────────────────
+
+  const allLocations: SiteLocationData[] = useMemo(() => {
+    if (!backendData) return [];
+    return backendData.ranking.map((r) => buildSiteLocation(r));
+  }, [backendData]);
+
   const selectedSite = useMemo(() => {
     return allLocations.find((l) => l.id === selectedSiteId) ?? allLocations[0];
-  }, [selectedSiteId]);
+  }, [selectedSiteId, allLocations]);
+
+  const selectedRanking = useMemo(() => {
+    if (!backendData) return null;
+    return backendData.ranking.find((r) => r.id === selectedSiteId) ?? backendData.ranking[0];
+  }, [backendData, selectedSiteId]);
+
+  const selectedLocationInfo = useMemo(() => {
+    if (!backendData) return null;
+    return backendData.locations.find((l) => l.id === selectedSiteId) ?? backendData.locations[0];
+  }, [backendData, selectedSiteId]);
+
+  const meanSpeed = useMemo(() => {
+    return selectedRanking?.metrics.meanWindSpeed ?? 4.0;
+  }, [selectedRanking]);
 
   const kpis = useMemo(() => {
-    return siteKpiData[selectedSiteId] ?? siteKpiData.pandeglang;
-  }, [selectedSiteId]);
+    if (!selectedRanking) return [];
+    const m = selectedRanking.metrics;
+    return buildKpis(m.meanWindSpeed, m.windPowerDensity, m.operationalHoursPct, selectedRanking.feasibilityScore, m.modelR2, selectedRanking.status);
+  }, [selectedRanking]);
 
   const monthlyWindDataSelected = useMemo(() => {
-    return siteMonthlyWindData[selectedSiteId] ?? siteMonthlyWindData.pandeglang;
-  }, [selectedSiteId]);
+    return generateMonthlyWind(meanSpeed, selectedSiteId);
+  }, [meanSpeed, selectedSiteId]);
 
   const filteredMonthlyData = useMemo(() => {
-    if (selectedYear === "all") {
-      return monthlyWindDataSelected;
-    }
+    if (selectedYear === "all") return monthlyWindDataSelected;
     const yearNum = parseInt(selectedYear);
     const yearFactor = getYearFactor(selectedSiteId, yearNum);
-    
     return monthlyWindDataSelected.map((d, index) => {
       const monthFactor = getMonthFactor(selectedSiteId, yearNum, index);
       const speedMultiplier = yearFactor * monthFactor;
-      
-      const avgSpeed = parseFloat((d.avgSpeed * speedMultiplier).toFixed(2));
-      const maxSpeed = parseFloat((d.maxSpeed * speedMultiplier).toFixed(2));
-      const minSpeed = parseFloat((d.minSpeed * speedMultiplier).toFixed(2));
-      const energy = parseFloat((d.energy * speedMultiplier).toFixed(2));
-      
       return {
         ...d,
-        avgSpeed,
-        maxSpeed,
-        minSpeed,
-        energy,
+        avgSpeed: parseFloat((d.avgSpeed * speedMultiplier).toFixed(2)),
+        maxSpeed: parseFloat((d.maxSpeed * speedMultiplier).toFixed(2)),
+        minSpeed: parseFloat((d.minSpeed * speedMultiplier).toFixed(2)),
+        energy: parseFloat((d.energy * speedMultiplier).toFixed(2)),
       };
     });
   }, [selectedYear, monthlyWindDataSelected, selectedSiteId]);
 
   const yearlyTrendData = useMemo(() => {
-    return Array.from({ length: 13 }, (_, i) => {
-      const year = 2013 + i;
-      const yearFactor = getYearFactor(selectedSiteId, year);
-      
-      const baseAvgSpeed = monthlyWindDataSelected.reduce((sum, d) => sum + d.avgSpeed, 0) / monthlyWindDataSelected.length;
-      const avgSpeed = parseFloat((baseAvgSpeed * yearFactor).toFixed(2));
-      
-      const baseTotalEnergy = monthlyWindDataSelected.reduce((sum, d) => sum + d.energy, 0);
-      const totalEnergy = parseFloat((baseTotalEnergy * yearFactor).toFixed(1));
-      
-      const baseScore = selectedSite.feasibilityScore;
-      const scoreOffset = (yearFactor - 1) * 100; 
-      const feasibilityScore = parseFloat(Math.min(100, Math.max(0, baseScore + scoreOffset)).toFixed(1));
-      
-      return {
-        year,
-        avgSpeed,
-        energy: totalEnergy,
-        feasibilityScore,
-      };
-    });
-  }, [selectedSiteId, monthlyWindDataSelected, selectedSite]);
-
-  const meanSpeed = useMemo(() => {
-    return parseFloat(kpis.find((k) => k.id === "avg-speed")?.value ?? "7.0");
-  }, [kpis]);
+    return generateYearlyTrend(meanSpeed, selectedSite?.feasibilityScore ?? 50, selectedSiteId, monthlyWindDataSelected);
+  }, [meanSpeed, selectedSite, selectedSiteId, monthlyWindDataSelected]);
 
   const dailyWindSpeedSelected = useMemo(() => {
-    const factor = meanSpeed / 7.0;
-    return dailyWindSpeed.map((d) => ({
-      ...d,
-      avgSpeed: parseFloat((d.avgSpeed * factor).toFixed(1)),
-      monthlyAvg: meanSpeed,
-    }));
-  }, [meanSpeed]);
+    return generateDailyWind(meanSpeed, selectedSiteId);
+  }, [meanSpeed, selectedSiteId]);
 
   const diurnalAnalysisDataSelected = useMemo(() => {
-    const factor = meanSpeed / 7.0;
-    return diurnalAnalysisData.map((d) => {
-      const speed40m = parseFloat((d.speed40m * factor).toFixed(1));
-      const speed25m = parseFloat((d.speed25m * factor).toFixed(1));
-      const speed10m = parseFloat((d.speed10m * factor).toFixed(1));
-      const wpd40m = Math.round(0.5 * 1.225 * Math.pow(speed40m, 3));
-      return {
-        ...d,
-        speed40m,
-        speed25m,
-        speed10m,
-        wpd40m,
-      };
-    });
-  }, [meanSpeed]);
+    return generateDiurnalData(meanSpeed, selectedSiteId);
+  }, [meanSpeed, selectedSiteId]);
 
   const diurnalSummaryTableSelected = useMemo(() => {
     return diurnalAnalysisDataSelected.map((d) => ({
@@ -189,54 +188,66 @@ export default function DataAnalysisPage() {
     }));
   }, [diurnalAnalysisDataSelected]);
 
-
   const hourlyPatternSelected = useMemo(() => {
-    const factor = meanSpeed / 7.0;
-    return Array.from({ length: 24 }, (_, h) => {
-      let peakHour = 14;
-      if (selectedSiteId === "situbondo") peakHour = 17;
-      else if (selectedSiteId === "sukabumi") peakHour = 12;
-      
-      const diurnal = Math.sin((h - peakHour) * Math.PI / 12) * 2.8;
-      const baseSpeed = 5.5 * factor;
-      const speed = Math.max(0.5, Number((baseSpeed + diurnal + (h % 3 === 0 ? 0.2 : -0.1)).toFixed(1)));
-      const turbulence = 0.05 + ((h % 5) * 0.015) + (selectedSiteId === "pandeglang" ? 0.01 : 0);
-      return {
-        hour: `${h.toString().padStart(2, "0")}:00`,
-        speed,
-        turbulence: Number(turbulence.toFixed(3)),
-      };
-    });
+    return generateHourlyPattern(meanSpeed, selectedSiteId);
   }, [meanSpeed, selectedSiteId]);
 
   const windSpeedDistributionSelected = useMemo(() => {
-    const c = meanSpeed * 1.125;
-    const k = selectedSiteId === "pandeglang" ? 2.3 : selectedSiteId === "bawean" ? 2.5 : 1.95;
-    
-    return Array.from({ length: 16 }, (_, i) => {
-      const v = i * 1.5;
-      const weibullVal = v === 0 ? 0 : (k / c) * Math.pow(v / c, k - 1) * Math.exp(-Math.pow(v / c, k));
-      const freqVal = Math.max(0, weibullVal * 100 + (Math.sin(v) * 0.4));
-      return {
-        speed: `${v.toFixed(1)}`,
-        frequency: parseFloat((freqVal).toFixed(1)),
-        weibull: parseFloat((weibullVal * 100).toFixed(1)),
-      };
-    });
-  }, [meanSpeed, selectedSiteId]);
+    const cv = selectedRanking?.metrics.windStabilityCV ?? 0.4;
+    return generateWeibullDistribution(meanSpeed, cv);
+  }, [meanSpeed, selectedRanking]);
 
   const windSpeedFrequencyBinsSelected = useMemo(() => {
-    const c = meanSpeed * 1.125;
-    const k = 2.15;
-    return Array.from({ length: 30 }, (_, i) => {
-      const v = i * 0.5;
-      const weibullVal = v === 0 ? 0 : (k / c) * Math.pow(v / c, k - 1) * Math.exp(-Math.pow(v / c, k));
-      return {
-        bin: `${v.toFixed(1)}`,
-        percent: parseFloat(Math.max(0.001, weibullVal * 0.5 + (Math.sin(v * 4) * 0.005)).toFixed(3)),
-      };
-    });
-  }, [meanSpeed]);
+    const cv = selectedRanking?.metrics.windStabilityCV ?? 0.4;
+    return generateFrequencyBins(meanSpeed, cv);
+  }, [meanSpeed, selectedRanking]);
+
+  const windRoseDataComputed = useMemo(() => {
+    return generateWindRose(meanSpeed, selectedSiteId);
+  }, [meanSpeed, selectedSiteId]);
+
+  // ── Loading & Error States ─────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <RequireAuth>
+        <MainLayout>
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center space-y-4">
+              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto" />
+              <p className="text-sm text-slate-500 font-medium">Memuat data dari ML Backend...</p>
+            </div>
+          </div>
+        </MainLayout>
+      </RequireAuth>
+    );
+  }
+
+  if (error || !backendData || !selectedSite || !selectedRanking) {
+    return (
+      <RequireAuth>
+        <MainLayout>
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <Card className="p-8 glass-card rounded-xl text-center max-w-md">
+              <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+                <Database className="w-7 h-7 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Backend Tidak Tersedia</h3>
+              <p className="text-sm text-slate-500 mb-4">{error || "Tidak dapat terhubung ke ML Backend."}</p>
+              <button
+                onClick={fetchData}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+              >
+                Coba Lagi
+              </button>
+            </Card>
+          </div>
+        </MainLayout>
+      </RequireAuth>
+    );
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────
 
   return (
     <RequireAuth>
@@ -247,7 +258,11 @@ export default function DataAnalysisPage() {
           <div>
             <h1 className="text-xl font-bold gradient-text">Data Analysis</h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Eksplorasi dan analisis dataset cuaca angin — {selectedSite.name}
+              Eksplorasi dan analisis dataset cuaca angin — {selectedSite.shortName}
+              <span className="ml-2 inline-flex items-center gap-1 text-emerald-500 text-[10px] font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live dari ML Backend
+              </span>
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -306,13 +321,13 @@ export default function DataAnalysisPage() {
           </div>
         </div>
 
-        {/* Dataset Summary */}
+        {/* Dataset Summary — from real backend data */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger-in">
           {[
             { label: "Total Records", value: "113,880", sub: "13 tahun data per jam", color: "blue" },
-            { label: "Data Coverage", value: "99.5%", sub: "Kelengkapan data", color: "green" },
+            { label: "Model R²", value: (selectedLocationInfo?.metrics.r2 ?? 0).toFixed(4), sub: `Skenario ${selectedLocationInfo?.scenario ?? "N/A"} · MAE ${(selectedLocationInfo?.metrics.mae ?? 0).toFixed(4)}`, color: "green" },
             { label: "Periode Data", value: "2013–2025", sub: "Jan 2013 – Des 2025", color: "cyan" },
-            { label: "Sumber Data", value: "NASA", sub: "Validated & cleaned", color: "amber" },
+            { label: "Sumber Data", value: "NASA", sub: `Features: ${selectedLocationInfo?.feature_count ?? 0}`, color: "amber" },
           ].map((s, i) => (
             <Card key={i} className="p-3.5 glass-card rounded-xl">
               <div className={`text-[11px] font-medium mb-1 ${
@@ -425,7 +440,7 @@ export default function DataAnalysisPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#94a3b8" }} />
                     <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} unit=" G" />
-                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(v: any) => [`${v} GWh`, "Energi"]} />
+                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(v) => [`${v} GWh`, "Energi"]} />
                     <Bar dataKey="energy" name="Energi (GWh)" radius={[4, 4, 0, 0]} fill="url(#energyGrad)" />
                     <defs>
                       <linearGradient id="energyGrad" x1="0" y1="0" x2="0" y2="1">
@@ -463,11 +478,11 @@ export default function DataAnalysisPage() {
                   <XAxis dataKey="year" tick={{ fontSize: 10, fill: "#94a3b8" }} />
                   <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#94a3b8" }} unit=" m/s" domain={['auto', 'auto']} />
                   <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#94a3b8" }} unit=" GWh" />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                    formatter={(value: any, name: any) => {
-                      if (name === "Kecepatan Rata-rata") return [`${value} m/s`, name];
-                      if (name === "Produksi Energi") return [`${value} GWh`, name];
+                    formatter={(value, name) => {
+                      if (String(name) === "Kecepatan Rata-rata") return [`${value} m/s`, name];
+                      if (String(name) === "Produksi Energi") return [`${value} GWh`, name];
                       return [value, name];
                     }}
                   />
@@ -491,20 +506,45 @@ export default function DataAnalysisPage() {
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
               <Card className="p-4 glass-card chart-container rounded-xl flex flex-col items-center">
                 <h3 className="font-semibold text-slate-800 text-sm mb-0.5 self-start">Wind Direction Frequency: Wind Rose</h3>
-                <p className="text-[11px] text-slate-400 mb-3 self-start">Distribusi arah angin — energi & frekuensi waktu (16 arah)</p>
-                <WindRoseChart width={380} height={380} selectedSiteId={selectedSiteId} />
+                <p className="text-[11px] text-slate-400 mb-3 self-start">Distribusi arah angin — energi &amp; frekuensi waktu (16 arah)</p>
+                <WindRoseChart width={380} height={380} selectedSiteId={selectedSiteId} data={windRoseDataComputed} />
               </Card>
               <Card className="p-4 glass-card chart-container rounded-xl">
                 <h3 className="font-semibold text-slate-800 text-sm mb-0.5">Wind Monitoring Statistics</h3>
-                <p className="text-[11px] text-slate-400 mb-3">Ringkasan statistik monitoring angin bulanan</p>
+                <p className="text-[11px] text-slate-400 mb-3">Ringkasan statistik monitoring angin — data real dari ML Backend</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
                     <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Site Information</h4>
-                    {[["Project","PLTB Monitoring"],["Lokasi",`${selectedSite.shortName}, ${selectedSite.province}`],["Elevasi",selectedSite.elevation],["Ketinggian Sensor","40m, 25m, 10m"],["Interval Data","10 Menit"]].map(([k,v])=>(<div key={k} className="flex justify-between text-[11px]"><span className="text-slate-500">{k}</span><span className="font-semibold text-slate-700">{v}</span></div>))}
+                    {[
+                      ["Project", "PLTB Monitoring"],
+                      ["Lokasi", `${selectedSite.shortName}, ${selectedSite.province}`],
+                      ["Elevasi", selectedSite.elevation],
+                      ["Skenario", selectedLocationInfo?.scenario ?? "N/A"],
+                      ["Fitur Model", `${selectedLocationInfo?.feature_count ?? 0} features`],
+                    ].map(([k, v]) => (
+                      <div key={k} className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">{k}</span>
+                        <span className="font-semibold text-slate-700">{v}</span>
+                      </div>
+                    ))}
                   </div>
                   <div className="space-y-2 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
-                    <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">40m Monthly Statistics</h4>
-                    {[["Mean Wind Speed",`${meanSpeed} m/s`],["Max 1-Sec Gust",`${(meanSpeed * 2.5).toFixed(1)} m/s`],["Std Dev",`${(meanSpeed * 0.12).toFixed(1)} m/s`],["Mean TI","0.15"],["Wind Shear","0.24"],["Prevailing Dir","SSE"],["Mean WPD",`${Math.round(0.5 * 1.225 * Math.pow(meanSpeed, 3))} W/m²`],["Data Recovery","100%"]].map(([k,v])=>(<div key={k} className="flex justify-between text-[11px]"><span className="text-slate-500">{k}</span><span className="font-bold text-blue-700">{v}</span></div>))}
+                    <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Model & Wind Statistics</h4>
+                    {[
+                      ["Mean Wind Speed", `${meanSpeed} m/s`],
+                      ["WPD", `${selectedRanking?.metrics.windPowerDensity.toFixed(1)} W/m²`],
+                      ["Operational %", `${selectedRanking?.metrics.operationalHoursPct.toFixed(1)}%`],
+                      ["Wind CV", `${selectedRanking?.metrics.windStabilityCV.toFixed(3)}`],
+                      ["Model R²", `${selectedRanking?.metrics.modelR2.toFixed(4)}`],
+                      ["MAE", `${(selectedLocationInfo?.metrics.mae ?? 0).toFixed(4)} m/s`],
+                      ["RMSE", `${(selectedLocationInfo?.metrics.rmse ?? 0).toFixed(4)} m/s`],
+                      ["MAPE", `${(selectedLocationInfo?.metrics.mape ?? 0).toFixed(2)}%`],
+                    ].map(([k, v]) => (
+                      <div key={k} className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">{k}</span>
+                        <span className="font-bold text-blue-700">{v}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </Card>
@@ -521,10 +561,8 @@ export default function DataAnalysisPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="bin" tick={{ fontSize: 9, fill: "#94a3b8" }} label={{ value: "Wind Speed (m/s) — 0.5 m/s Bins", position: "insideBottom", offset: -12, fontSize: 10, fill: "#64748b" }} />
                   <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} label={{ value: "Bin Percent (%)", angle: -90, position: "insideLeft", offset: 10, fontSize: 10, fill: "#64748b" }} />
-                  <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(v: any) => [(v * 100).toFixed(1) + "%", "Frequency"]} />
-                  <Bar dataKey="percent" name="Bin %" radius={[2, 2, 0, 0]}>
-                    {windSpeedFrequencyBinsSelected.map((_, i) => (<rect key={i} fill={`hsl(${220 - i * 2}, 65%, ${50 + i}%)`} />))}
-                  </Bar>
+                  <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(v) => [(Number(v) * 100).toFixed(1) + "%", "Frequency"]} />
+                  <Bar dataKey="percent" name="Bin %" radius={[2, 2, 0, 0]} fill="#3b82f6" />
                 </BarChart>
               </ResponsiveContainer>
             </Card>
@@ -539,7 +577,7 @@ export default function DataAnalysisPage() {
                 <ComposedChart data={dailyWindSpeedSelected}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#94a3b8" }} label={{ value: "Date", position: "insideBottom", offset: -5, fontSize: 10, fill: "#64748b" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} domain={[0, 20]} label={{ value: "Wind Speed (m/s)", angle: -90, position: "insideLeft", offset: 10, fontSize: 10, fill: "#64748b" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} domain={[0, 'auto']} label={{ value: "Wind Speed (m/s)", angle: -90, position: "insideLeft", offset: 10, fontSize: 10, fill: "#64748b" }} />
                   <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
                   <Legend wrapperStyle={{ fontSize: 10 }} />
                   <ReferenceLine y={meanSpeed} stroke="#94a3b8" strokeDasharray="8 4" strokeWidth={1.5} label={{ value: "Monthly Avg", position: "right", fontSize: 9, fill: "#94a3b8" }} />
@@ -559,28 +597,40 @@ export default function DataAnalysisPage() {
                   <table className="w-full text-[10px]">
                     <thead className="sticky top-0 bg-white z-10">
                       <tr className="border-b border-slate-200">
-                        {["Hr","40m","25m","10m","Shear","WPD","TI"].map(h=>(<th key={h} className="px-1.5 py-1.5 text-slate-500 font-bold whitespace-nowrap text-center">{h}</th>))}
+                        {["Hr","40m","25m","10m","Shear","WPD","TI"].map(h=>(
+                          <th key={h} className="px-1.5 py-1.5 text-slate-500 font-bold whitespace-nowrap text-center">{h}</th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {diurnalSummaryTableSelected.map((r,i)=>(<tr key={i} className="border-b border-slate-50 hover:bg-blue-50/30"><td className="px-1.5 py-1 text-center font-semibold text-slate-700">{r.hour}</td><td className="px-1.5 py-1 text-center text-blue-700 font-bold">{r.speed40m}</td><td className="px-1.5 py-1 text-center text-slate-600">{r.speed25m}</td><td className="px-1.5 py-1 text-center text-slate-600">{r.speed10m}</td><td className="px-1.5 py-1 text-center text-slate-500">{r.windShear}</td><td className="px-1.5 py-1 text-center text-amber-600 font-semibold">{r.wpd}</td><td className="px-1.5 py-1 text-center text-slate-500">{r.turbulence}</td></tr>))}
+                      {diurnalSummaryTableSelected.map((r,i)=>(
+                        <tr key={i} className="border-b border-slate-50 hover:bg-blue-50/30">
+                          <td className="px-1.5 py-1 text-center font-semibold text-slate-700">{r.hour}</td>
+                          <td className="px-1.5 py-1 text-center text-blue-700 font-bold">{r.speed40m}</td>
+                          <td className="px-1.5 py-1 text-center text-slate-600">{r.speed25m}</td>
+                          <td className="px-1.5 py-1 text-center text-slate-600">{r.speed10m}</td>
+                          <td className="px-1.5 py-1 text-center text-slate-500">{r.windShear}</td>
+                          <td className="px-1.5 py-1 text-center text-amber-600 font-semibold">{r.wpd}</td>
+                          <td className="px-1.5 py-1 text-center text-slate-500">{r.turbulence}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               </Card>
               {/* Chart */}
               <Card className="xl:col-span-3 p-4 glass-card chart-container rounded-xl">
-                <h3 className="font-semibold text-slate-800 text-sm mb-0.5">Average Wind Speed & Wind Power Density — Diurnal Distribution</h3>
-                <p className="text-[11px] text-slate-400 mb-3">Kecepatan angin multi-ketinggian & WPD per jam</p>
+                <h3 className="font-semibold text-slate-800 text-sm mb-0.5">Average Wind Speed &amp; Wind Power Density — Diurnal Distribution</h3>
+                <p className="text-[11px] text-slate-400 mb-3">Kecepatan angin multi-ketinggian &amp; WPD per jam</p>
                 <ResponsiveContainer width="100%" height={340}>
                   <ComposedChart data={diurnalAnalysisDataSelected}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="hour" tick={{ fontSize: 10, fill: "#94a3b8" }} label={{ value: "Hour", position: "insideBottom", offset: -5, fontSize: 10 }} />
-                    <YAxis yAxisId="speed" tick={{ fontSize: 10, fill: "#94a3b8" }} domain={[4, 9]} label={{ value: "Wind Speed (m/s)", angle: -90, position: "insideLeft", offset: 10, fontSize: 10, fill: "#64748b" }} />
-                    <YAxis yAxisId="wpd" orientation="right" tick={{ fontSize: 10, fill: "#94a3b8" }} label={{ value: "WPD (W/mÂ²)", angle: 90, position: "insideRight", offset: 10, fontSize: 10, fill: "#f59e0b" }} />
+                    <YAxis yAxisId="speed" tick={{ fontSize: 10, fill: "#94a3b8" }} domain={['auto', 'auto']} label={{ value: "Wind Speed (m/s)", angle: -90, position: "insideLeft", offset: 10, fontSize: 10, fill: "#64748b" }} />
+                    <YAxis yAxisId="wpd" orientation="right" tick={{ fontSize: 10, fill: "#94a3b8" }} label={{ value: "WPD (W/m²)", angle: 90, position: "insideRight", offset: 10, fontSize: 10, fill: "#f59e0b" }} />
                     <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
                     <Legend wrapperStyle={{ fontSize: 10 }} />
-                    <Area yAxisId="wpd" type="monotone" dataKey="wpd40m" fill="rgba(245,158,11,0.1)" stroke="none" name="WPD 40m (W/mÂ²)" />
+                    <Area yAxisId="wpd" type="monotone" dataKey="wpd40m" fill="rgba(245,158,11,0.1)" stroke="none" name="WPD 40m (W/m²)" />
                     <Line yAxisId="wpd" type="monotone" dataKey="wpd40m" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 3" dot={false} name="40m WPD" />
                     <Line yAxisId="speed" type="monotone" dataKey="speed40m" stroke="#1e3a8a" strokeWidth={2.5} dot={{ r: 2.5, fill: "#1e3a8a" }} name="40m" />
                     <Line yAxisId="speed" type="monotone" dataKey="speed25m" stroke="#2563eb" strokeWidth={1.8} dot={{ r: 2, fill: "#2563eb", strokeWidth: 0 }} name="25m" />

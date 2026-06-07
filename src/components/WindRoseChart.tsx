@@ -1,35 +1,46 @@
 "use client";
 
 import { useRef, useEffect, useCallback, useMemo } from "react";
-import { windRoseData } from "@/lib/mockData";
+import { windRoseData as defaultWindRoseData } from "@/lib/mockData";
+
+interface WindRoseDataPoint {
+  direction: string;
+  angle: number;
+  energy: number;
+  frequency: number;
+}
 
 interface WindRoseChartProps {
   width?: number;
   height?: number;
   selectedSiteId?: string;
+  data?: WindRoseDataPoint[];
 }
 
-export default function WindRoseChart({ width = 420, height = 420, selectedSiteId = "pandeglang" }: WindRoseChartProps) {
+export default function WindRoseChart({ width = 420, height = 420, selectedSiteId = "pandeglang", data }: WindRoseChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const windRoseDataSelected = useMemo(() => {
-    // Shift/rotate index based on location ID to make the wind rose look different
+    // If external data is provided, use it directly
+    if (data && data.length > 0) return data;
+
+    // Fallback: shift/rotate index based on location ID
     let offset = 0;
     if (selectedSiteId === "situbondo") offset = 4;
     else if (selectedSiteId === "bawean") offset = -2;
     else if (selectedSiteId === "sukabumi") offset = 2;
     else if (selectedSiteId === "baron") offset = 6;
 
-    return windRoseData.map((d, index) => {
+    return defaultWindRoseData.map((d, index) => {
       const targetIndex = (index + offset + 16) % 16;
-      const refPoint = windRoseData[targetIndex];
+      const refPoint = defaultWindRoseData[targetIndex];
       return {
         ...d,
         frequency: refPoint.frequency,
         energy: refPoint.energy,
       };
     });
-  }, [selectedSiteId]);
+  }, [selectedSiteId, data]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
