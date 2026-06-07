@@ -149,7 +149,7 @@ export default function DashboardPage() {
               {dropdownOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
-                  <div className="absolute right-0 top-full mt-1 z-50 w-72 bg-white/90 backdrop-blur-xl rounded-xl border border-white/60 shadow-2xl overflow-hidden">
+                  <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-1 z-50 w-[280px] sm:w-72 max-w-[calc(100vw-2rem)] bg-white/90 backdrop-blur-xl rounded-xl border border-white/60 shadow-2xl overflow-hidden">
                     <div className="px-3 py-2 border-b border-slate-100">
                       <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Pilih Lokasi PLTB</p>
                     </div>
