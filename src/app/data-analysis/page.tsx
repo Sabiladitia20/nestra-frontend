@@ -280,7 +280,7 @@ export default function DataAnalysisPage() {
               {dropdownOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
-                  <div className="absolute right-0 top-full mt-1 z-50 w-72 bg-white/90 backdrop-blur-xl rounded-xl border border-white/60 shadow-2xl overflow-hidden">
+                  <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-1 z-50 w-[280px] sm:w-72 max-w-[calc(100vw-2rem)] bg-white/90 backdrop-blur-xl rounded-xl border border-white/60 shadow-2xl overflow-hidden">
                     <div className="px-3 py-2 border-b border-slate-100">
                       <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Pilih Lokasi PLTB</p>
                     </div>
@@ -345,15 +345,17 @@ export default function DataAnalysisPage() {
 
         {/* Tabs with Charts */}
         <Tabs defaultValue="monthly" id="data-analysis-tabs">
-          <TabsList className="bg-white border border-slate-200 shadow-sm rounded-lg">
-            <TabsTrigger value="monthly" className="text-xs px-3">Bulanan</TabsTrigger>
-            <TabsTrigger value="windrose" className="text-xs px-3"><Compass className="w-3 h-3 mr-1" />Wind Rose</TabsTrigger>
-            <TabsTrigger value="speedfreq" className="text-xs px-3"><BarChart3 className="w-3 h-3 mr-1" />Speed Freq</TabsTrigger>
-            <TabsTrigger value="dailyavg" className="text-xs px-3"><Calendar className="w-3 h-3 mr-1" />Daily Avg</TabsTrigger>
-            <TabsTrigger value="diurnal" className="text-xs px-3"><Clock className="w-3 h-3 mr-1" />Diurnal</TabsTrigger>
-            <TabsTrigger value="hourly" className="text-xs px-3">Pola Harian</TabsTrigger>
-            <TabsTrigger value="distribution" className="text-xs px-3">Distribusi</TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-x-auto pb-2 -mb-2">
+            <TabsList className="bg-white border border-slate-200 shadow-sm rounded-lg flex w-max min-w-full justify-start">
+              <TabsTrigger value="monthly" className="text-xs px-3">Bulanan</TabsTrigger>
+              <TabsTrigger value="windrose" className="text-xs px-3"><Compass className="w-3 h-3 mr-1" />Wind Rose</TabsTrigger>
+              <TabsTrigger value="speedfreq" className="text-xs px-3"><BarChart3 className="w-3 h-3 mr-1" />Speed Freq</TabsTrigger>
+              <TabsTrigger value="dailyavg" className="text-xs px-3"><Calendar className="w-3 h-3 mr-1" />Daily Avg</TabsTrigger>
+              <TabsTrigger value="diurnal" className="text-xs px-3"><Clock className="w-3 h-3 mr-1" />Diurnal</TabsTrigger>
+              <TabsTrigger value="hourly" className="text-xs px-3">Pola Harian</TabsTrigger>
+              <TabsTrigger value="distribution" className="text-xs px-3">Distribusi</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Monthly Tab */}
           <TabsContent value="monthly" className="mt-3 space-y-3">
@@ -383,7 +385,7 @@ export default function DataAnalysisPage() {
                 {yearDropdownOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setYearDropdownOpen(false)} />
-                    <div className="absolute right-0 top-full mt-1.5 z-50 w-64 max-h-60 overflow-y-auto bg-white/95 backdrop-blur-xl rounded-xl border border-slate-200 shadow-2xl py-1 stagger-in">
+                    <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-1.5 z-50 w-[260px] sm:w-64 max-h-60 overflow-y-auto bg-white/95 backdrop-blur-xl rounded-xl border border-slate-200 shadow-2xl py-1 stagger-in">
                       <button
                         onClick={() => { setSelectedYear("all"); setYearDropdownOpen(false); }}
                         className={`w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors ${selectedYear === "all" ? "text-blue-600 bg-blue-50/50 font-bold" : "text-slate-700"}`}
