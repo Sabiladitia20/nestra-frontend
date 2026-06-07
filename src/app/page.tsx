@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
 import MainLayout from "@/components/layout/MainLayout";
-import { RequireAuth } from "@/lib/auth";
+
 import {
   Wind,
   Zap,
@@ -123,7 +123,7 @@ export default function DashboardPage() {
   const statusInfo = STATUS_STYLE[site.status];
 
   return (
-    <RequireAuth>
+    
     <MainLayout>
       <div className="space-y-4 max-w-[1400px] mx-auto">
         {/* Page Title + Location Selector */}
@@ -416,6 +416,6 @@ export default function DashboardPage() {
         </div>
       </div>
     </MainLayout>
-    </RequireAuth>
+    
   );
 }

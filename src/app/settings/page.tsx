@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
-import { RequireAuth } from "@/lib/auth";
+
 import { Card } from "@/components/ui/card";
 import { Settings } from "lucide-react";
 
@@ -31,7 +31,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <RequireAuth>
+    
     <MainLayout>
       <div className="space-y-4 max-w-xl mx-auto stagger-in mt-10">
         <Card className="p-6 glass-card rounded-xl space-y-4 border border-slate-200/60 shadow-sm">
@@ -63,6 +63,6 @@ export default function SettingsPage() {
         </Card>
       </div>
     </MainLayout>
-    </RequireAuth>
+    
   );
 }

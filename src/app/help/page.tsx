@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
-import { RequireAuth } from "@/lib/auth";
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +53,7 @@ export default function HelpPage() {
   );
 
   return (
-    <RequireAuth>
+    
     <MainLayout>
       <div className="space-y-5 max-w-5xl mx-auto stagger-in">
         {/* Header Help Card */}
@@ -188,6 +188,6 @@ export default function HelpPage() {
         </div>
       </div>
     </MainLayout>
-    </RequireAuth>
+    
   );
 }

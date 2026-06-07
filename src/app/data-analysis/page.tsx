@@ -1,7 +1,7 @@
 "use client";
 
 import MainLayout from "@/components/layout/MainLayout";
-import { RequireAuth } from "@/lib/auth";
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -210,7 +210,7 @@ export default function DataAnalysisPage() {
 
   if (loading) {
     return (
-      <RequireAuth>
+      
         <MainLayout>
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center space-y-4">
@@ -219,13 +219,13 @@ export default function DataAnalysisPage() {
             </div>
           </div>
         </MainLayout>
-      </RequireAuth>
+      
     );
   }
 
   if (error || !backendData || !selectedSite || !selectedRanking) {
     return (
-      <RequireAuth>
+      
         <MainLayout>
           <div className="flex items-center justify-center min-h-[60vh]">
             <Card className="p-8 glass-card rounded-xl text-center max-w-md">
@@ -243,14 +243,14 @@ export default function DataAnalysisPage() {
             </Card>
           </div>
         </MainLayout>
-      </RequireAuth>
+      
     );
   }
 
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <RequireAuth>
+    
     <MainLayout>
       <div className="space-y-4 max-w-[1400px] mx-auto">
         {/* Header */}
@@ -683,6 +683,6 @@ export default function DataAnalysisPage() {
         </Tabs>
       </div>
     </MainLayout>
-    </RequireAuth>
+    
   );
 }

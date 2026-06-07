@@ -1,7 +1,7 @@
 "use client";
 
 import MainLayout from "@/components/layout/MainLayout";
-import { RequireAuth } from "@/lib/auth";
+
 import { useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -169,7 +169,7 @@ export default function ReportGeneratorPage() {
   const copyMessage = (text: string) => navigator.clipboard.writeText(text);
 
   return (
-    <RequireAuth>
+    
     <MainLayout>
       <div className="max-w-[1400px] mx-auto">
         {/* Header */}
@@ -402,6 +402,6 @@ export default function ReportGeneratorPage() {
         </div>
       </div>
     </MainLayout>
-    </RequireAuth>
+    
   );
 }
