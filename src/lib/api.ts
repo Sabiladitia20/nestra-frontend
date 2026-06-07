@@ -100,8 +100,7 @@ export interface LocationInfo {
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = "https://nestrag.duckdns.org/ml";
 const API_VERSION = "v1";
 const API_PREFIX = `${API_BASE_URL}/api/${API_VERSION}`;
 
