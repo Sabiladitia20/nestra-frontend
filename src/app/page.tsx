@@ -431,6 +431,9 @@ export default function DashboardPage() {
             );
           })}
         </div>
+        <div className="text-[9px] text-slate-400 mt-2 px-2 text-center sm:text-left">
+          *R²: Coefficient of Determination | *CV: Coefficient of Variation | *WS10M: Wind Speed 10 Meters | *WPD: Wind Power Density | *ML: Machine Learning
+        </div>
 
         {/* Map + Site Overview */}
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-3">
@@ -588,7 +591,7 @@ export default function DashboardPage() {
                   dataKey="maxSpeed"
                   fill="#eff6ff"
                   stroke="none"
-                  name="Kec. Maks"
+                  name="Kecepatan Maksimal"
                 />
                 <Line
                   yAxisId="left"
@@ -597,7 +600,7 @@ export default function DashboardPage() {
                   stroke="#2563eb"
                   strokeWidth={2}
                   dot={{ fill: "#2563eb", r: 2.5 }}
-                  name="Kec. Rata-rata (m/s)"
+                  name="Kecepatan Rata-rata (m/s)"
                 />
                 <Bar
                   yAxisId="right"
@@ -623,7 +626,7 @@ export default function DashboardPage() {
               <BarChart data={windData} margin={{ left: -15, right: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="month" tick={{ fontSize: 9, fill: "#94a3b8" }} />
-                <YAxis tick={{ fontSize: 9, fill: "#94a3b8" }} unit=" G" />
+                <YAxis tick={{ fontSize: 9, fill: "#94a3b8" }} unit=" GWh" />
                 <Tooltip
                   formatter={(v: any) => [`${v} GWh`, "Energi"]}
                   contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}

@@ -785,6 +785,7 @@ export default function WindPredictionPage() {
               <div className="mb-3">
                 <h3 className="font-semibold text-slate-800 text-sm">Feature Importance</h3>
                 <p className="text-[11px] text-slate-400 mt-0.5">Random Forest — Top fitur berdasarkan MDI</p>
+                <p className="text-[9px] text-slate-400 mt-1">*MDI: Mean Decrease in Impurity</p>
               </div>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={featureImportance} layout="vertical" margin={{ left: 5, right: 20 }}>
@@ -868,7 +869,7 @@ export default function WindPredictionPage() {
                 <PolarGrid stroke="#e5e7eb" />
                 <PolarAngleAxis dataKey="direction" tick={{ fontSize: 10, fill: "#94a3b8" }} />
                 <Radar name="Frekuensi (%)" dataKey="frequency" stroke="#2563eb" fill="#3b82f6" fillOpacity={0.4} />
-                <Radar name="Kec. Angin (m/s)" dataKey="speed" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.15} />
+                <Radar name="Kecepatan Angin (m/s)" dataKey="speed" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.15} />
                 <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
               </RadarChart>
@@ -909,9 +910,9 @@ export default function WindPredictionPage() {
                   <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
                   <Legend wrapperStyle={{ fontSize: 10 }} />
                   <Line type="monotone" dataKey="RF" stroke="#10b981" strokeWidth={2} dot={{ r: 2 }} name="Random Forest" />
-                  <Line type="monotone" dataKey="LR" stroke="#3b82f6" strokeWidth={1.5} dot={{ r: 1.5 }} name="Linear Reg." />
-                  <Line type="monotone" dataKey="SVR" stroke="#8b5cf6" strokeWidth={1.5} dot={{ r: 1.5 }} name="SVR" />
-                  <Line type="monotone" dataKey="CNN" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2 }} name="CNN" />
+                  <Line type="monotone" dataKey="LR" stroke="#3b82f6" strokeWidth={1.5} dot={{ r: 1.5 }} name="Linear Regression" />
+                  <Line type="monotone" dataKey="SVR" stroke="#8b5cf6" strokeWidth={1.5} dot={{ r: 1.5 }} name="Support Vector Regression" />
+                  <Line type="monotone" dataKey="CNN" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2 }} name="Convolutional Neural Network" />
                   <Line type="monotone" dataKey="Transformer" stroke="#ef4444" strokeWidth={1.5} dot={{ r: 1.5 }} name="Transformer" />
                 </LineChart>
               </ResponsiveContainer>

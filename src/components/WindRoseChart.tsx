@@ -218,9 +218,8 @@ export default function WindRoseChart({ width = 420, height = 420, selectedSiteI
     const diff = Math.min(Math.abs(closestPoint.angle - pointAngle), 360 - Math.abs(closestPoint.angle - pointAngle));
 
     if (diff <= 18) {
-       // Optionally restrict to the exact radius if needed, but for UX clicking anywhere in the slice is fine
-       // Calculate canvas position relative to viewport for fixed tooltip
-       setHoverData({ point: closestPoint, x: e.clientX, y: e.clientY });
+       // Save local coordinate for absolute positioning within the container
+       setHoverData({ point: closestPoint, x, y });
     } else {
        setHoverData(null);
     }
@@ -229,25 +228,32 @@ export default function WindRoseChart({ width = 420, height = 420, selectedSiteI
   const handleMouseLeave = () => setHoverData(null);
 
   return (
-    <div className="flex flex-col items-center relative">
-      <canvas 
-        ref={canvasRef} 
-        style={{ width, height, cursor: hoverData ? "pointer" : "default" }} 
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-      />
-      
-      {/* Tooltip */}
-      {hoverData && (
-        <div 
-          className="fixed z-50 bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl rounded-lg p-3 pointer-events-none transform -translate-x-1/2 -translate-y-[120%]"
-          style={{ left: hoverData.x, top: hoverData.y, minWidth: '150px' }}
-        >
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
-            <span className="text-xs font-bold text-slate-800">Arah {hoverData.point.direction}</span>
-            <span className="text-[10px] text-slate-400 font-semibold">{hoverData.point.angle}°</span>
-          </div>
-          <div className="space-y-1.5">
+    <div className="flex flex-col items-center relative w-full">
+      <div className="relative" style={{ width, height, maxWidth: '100%' }}>
+        <canvas 
+          ref={canvasRef} 
+          style={{ width: '100%', height: '100%', cursor: hoverData ? "pointer" : "default" }} 
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        />
+        
+        {/* Tooltip */}
+        {hoverData && (
+          <div 
+            className="absolute z-50 bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl rounded-lg p-3 pointer-events-none"
+            style={{ 
+              left: hoverData.x < width / 2 ? hoverData.x + 15 : undefined,
+              right: hoverData.x >= width / 2 ? width - hoverData.x + 15 : undefined,
+              top: hoverData.y < height / 2 ? hoverData.y + 15 : undefined,
+              bottom: hoverData.y >= height / 2 ? height - hoverData.y + 15 : undefined,
+              minWidth: '150px' 
+            }}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+              <span className="text-xs font-bold text-slate-800">Arah {hoverData.point.direction}</span>
+              <span className="text-[10px] text-slate-400 font-semibold">{hoverData.point.angle}°</span>
+            </div>
+            <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
                 <div className="w-2.5 h-2.5 rounded-sm" style={{ background: "rgba(30, 64, 175, 0.85)" }} />
@@ -265,6 +271,7 @@ export default function WindRoseChart({ width = 420, height = 420, selectedSiteI
           </div>
         </div>
       )}
+      </div>
 
       {/* Legend */}
       <div className="flex items-center gap-6 mt-2 text-[11px] text-slate-600">

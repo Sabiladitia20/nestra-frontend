@@ -419,8 +419,8 @@ export default function DataAnalysisPage() {
                     <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
                     <Legend wrapperStyle={{ fontSize: 10 }} />
                     <Line type="monotone" dataKey="avgSpeed" stroke="#2563eb" strokeWidth={2} dot={{ r: 3, fill: "#2563eb" }} name="Rata-rata (m/s)" />
-                    <Line type="monotone" dataKey="maxSpeed" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Maks (m/s)" />
-                    <Line type="monotone" dataKey="minSpeed" stroke="#10b981" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Min (m/s)" />
+                    <Line type="monotone" dataKey="maxSpeed" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Maksimal (m/s)" />
+                    <Line type="monotone" dataKey="minSpeed" stroke="#10b981" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Minimal (m/s)" />
                   </LineChart>
                 </ResponsiveContainer>
               </Card>
@@ -434,7 +434,7 @@ export default function DataAnalysisPage() {
                   <BarChart data={filteredMonthlyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#94a3b8" }} />
-                    <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} unit=" G" />
+                    <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} unit=" GWh" />
                     <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(v) => [`${v} GWh`, "Energi"]} />
                     <Bar dataKey="energy" name="Energi (GWh)" radius={[4, 4, 0, 0]} fill="url(#energyGrad)" />
                     <defs>
@@ -579,8 +579,8 @@ export default function DataAnalysisPage() {
                   <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} domain={[0, 'auto']} label={{ value: "Wind Speed (m/s)", angle: -90, position: "insideLeft", offset: 10, fontSize: 10, fill: "#64748b" }} />
                   <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
                   <Legend wrapperStyle={{ fontSize: 10 }} />
-                  <Line type="monotone" dataKey="monthlyAvg" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Monthly Average" />
-                  <Line type="monotone" dataKey="avgSpeed" stroke="#1e3a8a" strokeWidth={2} dot={{ r: 3, fill: "#1e3a8a", stroke: "#fff", strokeWidth: 1.5 }} activeDot={{ r: 5 }} name="Daily Average" />
+                  <Line type="monotone" dataKey="monthlyAvg" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Rata-rata Bulanan" />
+                  <Line type="monotone" dataKey="avgSpeed" stroke="#1e3a8a" strokeWidth={2} dot={{ r: 3, fill: "#1e3a8a", stroke: "#fff", strokeWidth: 1.5 }} activeDot={{ r: 5 }} name="Rata-rata Harian" />
                 </ComposedChart>
               </ResponsiveContainer>
             </Card>
@@ -629,11 +629,11 @@ export default function DataAnalysisPage() {
                     <YAxis yAxisId="wpd" orientation="right" tick={{ fontSize: 10, fill: "#94a3b8" }} label={{ value: "WPD (W/m²)", angle: 90, position: "insideRight", offset: 10, fontSize: 10, fill: "#f59e0b" }} />
                     <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
                     <Legend wrapperStyle={{ fontSize: 10 }} />
-                    <Area yAxisId="wpd" type="monotone" dataKey="wpd40m" fill="rgba(245,158,11,0.1)" stroke="none" name="WPD 40m (W/m²)" />
-                    <Line yAxisId="wpd" type="monotone" dataKey="wpd40m" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 3" dot={false} name="40m WPD" />
-                    <Line yAxisId="speed" type="monotone" dataKey="speed40m" stroke="#1e3a8a" strokeWidth={2.5} dot={{ r: 2.5, fill: "#1e3a8a" }} name="40m" />
-                    <Line yAxisId="speed" type="monotone" dataKey="speed25m" stroke="#2563eb" strokeWidth={1.8} dot={{ r: 2, fill: "#2563eb", strokeWidth: 0 }} name="25m" />
-                    <Line yAxisId="speed" type="monotone" dataKey="speed10m" stroke="#60a5fa" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="10m" />
+                    <Area yAxisId="wpd" type="monotone" dataKey="wpd40m" fill="rgba(245,158,11,0.1)" stroke="none" name="Wind Power Density 40m (W/m²)" />
+                    <Line yAxisId="wpd" type="monotone" dataKey="wpd40m" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Wind Power Density 40m" />
+                    <Line yAxisId="speed" type="monotone" dataKey="speed40m" stroke="#1e3a8a" strokeWidth={2.5} dot={{ r: 2.5, fill: "#1e3a8a" }} name="40 meter" />
+                    <Line yAxisId="speed" type="monotone" dataKey="speed25m" stroke="#2563eb" strokeWidth={1.8} dot={{ r: 2, fill: "#2563eb", strokeWidth: 0 }} name="25 meter" />
+                    <Line yAxisId="speed" type="monotone" dataKey="speed10m" stroke="#60a5fa" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="10 meter" />
                   </ComposedChart>
                 </ResponsiveContainer>
               </Card>
@@ -652,8 +652,8 @@ export default function DataAnalysisPage() {
                   <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} unit=" m/s" />
                   <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
                   <Legend wrapperStyle={{ fontSize: 10 }} />
-                  <Line type="monotone" dataKey="speed" stroke="#2563eb" strokeWidth={2} dot={false} name="Kec. Angin (m/s)" />
-                  <Line type="monotone" dataKey="turbulence" stroke="#f59e0b" strokeWidth={1.5} dot={false} yAxisId={1} name="TI" />
+                  <Line type="monotone" dataKey="speed" stroke="#2563eb" strokeWidth={2} dot={false} name="Kecepatan Angin (m/s)" />
+                  <Line type="monotone" dataKey="turbulence" stroke="#f59e0b" strokeWidth={1.5} dot={false} yAxisId={1} name="Turbulence Intensity" />
                   <YAxis yAxisId={1} orientation="right" tick={{ fontSize: 10, fill: "#94a3b8" }} />
                 </LineChart>
               </ResponsiveContainer>
