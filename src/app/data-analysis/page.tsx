@@ -347,7 +347,7 @@ export default function DataAnalysisPage() {
         <Tabs defaultValue="monthly" id="data-analysis-tabs">
           <div className="w-full overflow-x-auto pb-2 -mb-2">
             <TabsList className="bg-white border border-slate-200 shadow-sm rounded-lg flex w-max min-w-full justify-start">
-              <TabsTrigger value="monthly" className="text-xs px-3">Bulanan</TabsTrigger>
+              <TabsTrigger value="monthly" className="text-xs px-3">Bulanan &amp; Tahunan</TabsTrigger>
               <TabsTrigger value="windrose" className="text-xs px-3"><Compass className="w-3 h-3 mr-1" />Wind Rose</TabsTrigger>
               <TabsTrigger value="speedfreq" className="text-xs px-3"><BarChart3 className="w-3 h-3 mr-1" />Speed Freq</TabsTrigger>
               <TabsTrigger value="dailyavg" className="text-xs px-3"><Calendar className="w-3 h-3 mr-1" />Daily Avg</TabsTrigger>
