@@ -582,7 +582,7 @@ export default function DataAnalysisPage() {
                   <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} domain={[0, 'auto']} label={{ value: "Wind Speed (m/s)", angle: -90, position: "insideLeft", offset: 10, fontSize: 10, fill: "#64748b" }} />
                   <Tooltip contentStyle={{ borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
                   <Legend wrapperStyle={{ fontSize: 10 }} />
-                  <ReferenceLine y={meanSpeed} stroke="#94a3b8" strokeDasharray="8 4" strokeWidth={1.5} label={{ value: "Monthly Avg", position: "right", fontSize: 9, fill: "#94a3b8" }} />
+                  <Line type="monotone" dataKey="monthlyAvg" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} name="Monthly Average" />
                   <Line type="monotone" dataKey="avgSpeed" stroke="#1e3a8a" strokeWidth={2} dot={{ r: 3, fill: "#1e3a8a", stroke: "#fff", strokeWidth: 1.5 }} activeDot={{ r: 5 }} name="Daily Average" />
                 </ComposedChart>
               </ResponsiveContainer>

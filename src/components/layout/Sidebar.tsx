@@ -53,7 +53,7 @@ export default function Sidebar() {
   const [showProfile, setShowProfile] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const { isOpen, close } = useMobileMenu();
-  
+
   useEffect(() => {
     const fetchUser = async () => {
       const { createClient } = await import("@/lib/supabase/client");
@@ -93,7 +93,7 @@ export default function Sidebar() {
     <>
       {/* Mobile Backdrop */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden"
           onClick={close}
         />
@@ -128,7 +128,7 @@ export default function Sidebar() {
               </p>
             </div>
           </div>
-          <button 
+          <button
             onClick={close}
             className="md:hidden text-slate-400 hover:text-white p-1 rounded-md"
           >
@@ -175,92 +175,92 @@ export default function Sidebar() {
             })}
           </nav>
 
-        {/* Divider */}
-        <div className="my-3 border-t border-white/[0.06]" />
+          {/* Divider */}
+          <div className="my-3 border-t border-white/[0.06]" />
 
-        <p className="text-slate-500 text-[10px] font-semibold tracking-widest uppercase px-2 mb-2">
-          Lainnya
-        </p>
-        <nav className="space-y-0.5">
-          {bottomItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={close}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/[0.05] transition-all duration-200 text-sm"
-              >
-                <Icon className="w-4 h-4" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+          <p className="text-slate-500 text-[10px] font-semibold tracking-widest uppercase px-2 mb-2">
+            Lainnya
+          </p>
+          <nav className="space-y-0.5">
+            {bottomItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={close}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/[0.05] transition-all duration-200 text-sm"
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
 
-      {/* Footer info */}
-      <div className="px-3 py-3 border-t border-white/[0.06] relative" ref={profileRef}>
-        {/* Profile Popup */}
-        {showProfile && (
-          <div className="absolute bottom-full left-3 mb-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2">
-            <div className="p-3 border-b border-slate-700">
-              <p className="text-slate-200 text-sm font-semibold truncate">
+        {/* Footer info */}
+        <div className="px-3 py-3 border-t border-white/[0.06] relative" ref={profileRef}>
+          {/* Profile Popup */}
+          {showProfile && (
+            <div className="absolute bottom-full left-3 mb-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2">
+              <div className="p-3 border-b border-slate-700">
+                <p className="text-slate-200 text-sm font-semibold truncate">
+                  {userFullName || (userEmail ? userEmail.split("@")[0] : "User")}
+                </p>
+                <p className="text-slate-400 text-xs truncate">
+                  {userEmail || "admin@nestra.id"}
+                </p>
+              </div>
+              <div className="p-1">
+                <button
+                  className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded transition-colors"
+                  onClick={() => {
+                    setShowProfile(false);
+                    router.push('/settings');
+                  }}
+                >
+                  Pengaturan Akun
+                </button>
+                <button
+                  className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-slate-700 hover:text-red-300 rounded transition-colors flex items-center gap-2"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Keluar
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div
+            className="flex items-center gap-2.5 px-2 py-2 cursor-pointer hover:bg-white/[0.05] rounded-lg transition-colors"
+            onClick={() => setShowProfile(!showProfile)}
+          >
+            <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-cyan-400/30 flex-shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.15)] bg-slate-800 flex items-center justify-center">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="User"
+                  className="w-full h-full object-cover object-center"
+                />
+              ) : (
+                <span className="text-slate-400 text-xs font-bold">
+                  {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-slate-200 text-xs font-semibold truncate">
                 {userFullName || (userEmail ? userEmail.split("@")[0] : "User")}
               </p>
-              <p className="text-slate-400 text-xs truncate">
-                {userEmail || "admin@nestra.id"}
+              <p className="text-slate-500 text-[10px] truncate">
+                {userEmail || "Engineer · Admin"}
               </p>
             </div>
-            <div className="p-1">
-              <button 
-                className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded transition-colors"
-                onClick={() => {
-                  setShowProfile(false);
-                  router.push('/settings');
-                }}
-              >
-                Pengaturan Akun
-              </button>
-              <button 
-                className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-slate-700 hover:text-red-300 rounded transition-colors flex items-center gap-2"
-                onClick={handleLogout}
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                Keluar
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div 
-          className="flex items-center gap-2.5 px-2 py-2 cursor-pointer hover:bg-white/[0.05] rounded-lg transition-colors"
-          onClick={() => setShowProfile(!showProfile)}
-        >
-          <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-cyan-400/30 flex-shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.15)] bg-slate-800 flex items-center justify-center">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt="User"
-                className="w-full h-full object-cover object-center"
-              />
-            ) : (
-              <span className="text-slate-400 text-xs font-bold">
-                {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
-              </span>
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-slate-200 text-xs font-semibold truncate">
-              {userFullName || (userEmail ? userEmail.split("@")[0] : "User")}
-            </p>
-            <p className="text-slate-500 text-[10px] truncate">
-              {userEmail || "Engineer · Admin"}
-            </p>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
     </>
   );
 }
