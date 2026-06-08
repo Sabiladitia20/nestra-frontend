@@ -38,7 +38,7 @@ const EXAMPLE_PROMPTS = [
   { label: "Estimasi Energi",      prompt: "Berapa estimasi produksi energi tahunan?",           icon: Zap },
   { label: "Kelebihan & Kekurangan", prompt: "Apa kelebihan dan kekurangan lokasi ini?",         icon: TrendingUp },
   { label: "Rekomendasi Turbin",   prompt: "Rekomendasikan tipe turbin terbaik untuk lokasi ini", icon: Wind },
-  { label: "Ringkasan Eksekutif",  prompt: "Buat ringkasan eksekutif kelayakan PLTB Pandeglang", icon: FileText },
+  { label: "Ringkasan Eksekutif",  prompt: "Buat ringkasan eksekutif kelayakan PLTB", icon: FileText },
   { label: "Analisis Risiko",      prompt: "Jelaskan risiko utama pembangunan PLTB di lokasi ini", icon: BarChart2 },
 ];
 
@@ -102,18 +102,20 @@ export default function ReportGeneratorPage() {
     {
       id: "welcome",
       role: "assistant",
-      content: `Halo! Saya **Nestra Assistant** 👋\n\nSaya siap membantu Anda menganalisis potensi PLTB di **Pandeglang, Banten** dan menghasilkan laporan kelayakan komprehensif.\n\nCoba tanyakan:\n- "Analisis kelayakan pembangunan PLTB di daerah ini"\n- "Berapa estimasi produksi energi tahunan?"\n- "Apa kelebihan dan kekurangan lokasi ini?"`,
+      content: `Halo! Saya **Nestra Assistant** 👋\n\nSaya siap membantu Anda menganalisis potensi PLTB di seluruh lokasi dan menghasilkan laporan kelayakan komprehensif.\n\nCoba tanyakan:\n- "Analisis kelayakan pembangunan PLTB di lokasi tertentu"\n- "Berapa estimasi produksi energi tahunan?"\n- "Apa kelebihan dan kekurangan lokasinya?"`,
       timestamp: new Date(),
     },
   ]);
   const [input, setInput]       = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]       = useState<string | null>(null);
-  const messagesEndRef          = useRef<HTMLDivElement>(null);
   const inputRef                = useRef<HTMLTextAreaElement>(null);
+  const chatContainerRef        = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const sendMessage = async (text?: string) => {
@@ -201,7 +203,7 @@ export default function ReportGeneratorPage() {
               style={{ minHeight: "calc(100vh - 240px)", maxHeight: "calc(100vh - 240px)" }}>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 min-h-0 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 min-h-0 custom-scrollbar" ref={chatContainerRef}>
                 <div className="space-y-3">
                   {messages.map((msg) => (
                     <div key={msg.id}
@@ -265,8 +267,6 @@ export default function ReportGeneratorPage() {
                       <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-600">✕</button>
                     </div>
                   )}
-
-                  <div ref={messagesEndRef} />
                 </div>
               </div>
 
@@ -329,7 +329,7 @@ export default function ReportGeneratorPage() {
                   <MapPin className="w-3 h-3 text-slate-400 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-[9px] text-slate-400">Lokasi</p>
-                    <p className="text-[11px] font-semibold text-slate-700 leading-tight">Pandeglang, Banten</p>
+                    <p className="text-[11px] font-semibold text-slate-700 leading-tight">Seluruh Lokasi</p>
                   </div>
                 </div>
                 {[
