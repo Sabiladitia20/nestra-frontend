@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useMemo } from "react";
+import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import { windRoseData as defaultWindRoseData } from "@/lib/mockData";
 
 interface WindRoseDataPoint {
@@ -19,6 +19,7 @@ interface WindRoseChartProps {
 
 export default function WindRoseChart({ width = 420, height = 420, selectedSiteId = "pandeglang", data }: WindRoseChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [hoverData, setHoverData] = useState<{ point: WindRoseDataPoint; x: number; y: number } | null>(null);
 
   const windRoseDataSelected = useMemo(() => {
     // If external data is provided, use it directly
@@ -182,9 +183,89 @@ export default function WindRoseChart({ width = 420, height = 420, selectedSiteI
     return () => window.removeEventListener("resize", draw);
   }, [draw]);
 
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const cx = width / 2;
+    const cy = height / 2;
+    const maxRadius = Math.min(cx, cy) - 50;
+
+    const dx = x - cx;
+    const dy = y - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > maxRadius || dist < 5) {
+      setHoverData(null);
+      return;
+    }
+
+    let angleRad = Math.atan2(dy, dx);
+    let angleDeg = (angleRad * 180) / Math.PI;
+    let pointAngle = angleDeg + 90;
+    if (pointAngle < 0) pointAngle += 360;
+    if (pointAngle >= 360) pointAngle -= 360;
+
+    const closestPoint = windRoseDataSelected.reduce((prev, curr) => {
+      const diffPrev = Math.min(Math.abs(prev.angle - pointAngle), 360 - Math.abs(prev.angle - pointAngle));
+      const diffCurr = Math.min(Math.abs(curr.angle - pointAngle), 360 - Math.abs(curr.angle - pointAngle));
+      return diffCurr < diffPrev ? curr : prev;
+    });
+
+    const diff = Math.min(Math.abs(closestPoint.angle - pointAngle), 360 - Math.abs(closestPoint.angle - pointAngle));
+
+    if (diff <= 18) {
+       // Optionally restrict to the exact radius if needed, but for UX clicking anywhere in the slice is fine
+       // Calculate canvas position relative to viewport for fixed tooltip
+       setHoverData({ point: closestPoint, x: e.clientX, y: e.clientY });
+    } else {
+       setHoverData(null);
+    }
+  }, [width, height, windRoseDataSelected]);
+
+  const handleMouseLeave = () => setHoverData(null);
+
   return (
-    <div className="flex flex-col items-center">
-      <canvas ref={canvasRef} style={{ width, height }} />
+    <div className="flex flex-col items-center relative">
+      <canvas 
+        ref={canvasRef} 
+        style={{ width, height, cursor: hoverData ? "pointer" : "default" }} 
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      />
+      
+      {/* Tooltip */}
+      {hoverData && (
+        <div 
+          className="fixed z-50 bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl rounded-lg p-3 pointer-events-none transform -translate-x-1/2 -translate-y-[120%]"
+          style={{ left: hoverData.x, top: hoverData.y, minWidth: '150px' }}
+        >
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+            <span className="text-xs font-bold text-slate-800">Arah {hoverData.point.direction}</span>
+            <span className="text-[10px] text-slate-400 font-semibold">{hoverData.point.angle}°</span>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                <div className="w-2.5 h-2.5 rounded-sm" style={{ background: "rgba(30, 64, 175, 0.85)" }} />
+                <span>Total Energy</span>
+              </div>
+              <span className="text-xs font-bold text-slate-800">{hoverData.point.energy.toFixed(1)}%</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                <div className="w-2.5 h-2.5 rounded-sm" style={{ background: "rgba(96, 165, 250, 0.45)" }} />
+                <span>Total Time</span>
+              </div>
+              <span className="text-xs font-bold text-slate-800">{hoverData.point.frequency.toFixed(1)}%</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Legend */}
       <div className="flex items-center gap-6 mt-2 text-[11px] text-slate-600">
         <div className="flex items-center gap-1.5">
@@ -197,7 +278,7 @@ export default function WindRoseChart({ width = 420, height = 420, selectedSiteI
         </div>
       </div>
       <div className="text-[10px] text-slate-400 mt-1 space-y-0.5 text-center">
-        <p>Circle Center = 0.0% · Inner Circle = 7.5% · Outer Circle = 15.0%</p>
+        <p>Circle Center = 0.0% · Inner Circle = 25% · Outer Circle = 100% dari Max</p>
       </div>
     </div>
   );

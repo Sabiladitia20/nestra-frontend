@@ -133,48 +133,53 @@ export default function DataAnalysisPage() {
     return backendData.locations.find((l) => l.id === selectedSiteId) ?? backendData.locations[0];
   }, [backendData, selectedSiteId]);
 
-  const meanSpeed = useMemo(() => {
+  const baseMeanSpeed = useMemo(() => {
     return selectedRanking?.metrics.meanWindSpeed ?? 4.0;
   }, [selectedRanking]);
+
+  const effectiveMeanSpeed = useMemo(() => {
+    if (selectedYear === "all") return baseMeanSpeed;
+    const yearNum = parseInt(selectedYear);
+    const yearFactor = getYearFactor(selectedSiteId, yearNum);
+    return parseFloat((baseMeanSpeed * yearFactor).toFixed(2));
+  }, [baseMeanSpeed, selectedYear, selectedSiteId]);
 
   const kpis = useMemo(() => {
     if (!selectedRanking) return [];
     const m = selectedRanking.metrics;
-    return buildKpis(m.meanWindSpeed, m.windPowerDensity, m.operationalHoursPct, selectedRanking.feasibilityScore, m.modelR2, selectedRanking.status);
-  }, [selectedRanking]);
+    return buildKpis(effectiveMeanSpeed, m.windPowerDensity, m.operationalHoursPct, selectedRanking.feasibilityScore, m.modelR2, selectedRanking.status);
+  }, [selectedRanking, effectiveMeanSpeed]);
 
   const monthlyWindDataSelected = useMemo(() => {
-    return generateMonthlyWind(meanSpeed, selectedSiteId);
-  }, [meanSpeed, selectedSiteId]);
+    return generateMonthlyWind(effectiveMeanSpeed, selectedSiteId);
+  }, [effectiveMeanSpeed, selectedSiteId]);
 
   const filteredMonthlyData = useMemo(() => {
     if (selectedYear === "all") return monthlyWindDataSelected;
     const yearNum = parseInt(selectedYear);
-    const yearFactor = getYearFactor(selectedSiteId, yearNum);
     return monthlyWindDataSelected.map((d, index) => {
       const monthFactor = getMonthFactor(selectedSiteId, yearNum, index);
-      const speedMultiplier = yearFactor * monthFactor;
       return {
         ...d,
-        avgSpeed: parseFloat((d.avgSpeed * speedMultiplier).toFixed(2)),
-        maxSpeed: parseFloat((d.maxSpeed * speedMultiplier).toFixed(2)),
-        minSpeed: parseFloat((d.minSpeed * speedMultiplier).toFixed(2)),
-        energy: parseFloat((d.energy * speedMultiplier).toFixed(2)),
+        avgSpeed: parseFloat((d.avgSpeed * monthFactor).toFixed(2)),
+        maxSpeed: parseFloat((d.maxSpeed * monthFactor).toFixed(2)),
+        minSpeed: parseFloat((d.minSpeed * monthFactor).toFixed(2)),
+        energy: parseFloat((d.energy * monthFactor).toFixed(2)),
       };
     });
   }, [selectedYear, monthlyWindDataSelected, selectedSiteId]);
 
   const yearlyTrendData = useMemo(() => {
-    return generateYearlyTrend(meanSpeed, selectedSite?.feasibilityScore ?? 50, selectedSiteId, monthlyWindDataSelected);
-  }, [meanSpeed, selectedSite, selectedSiteId, monthlyWindDataSelected]);
+    return generateYearlyTrend(baseMeanSpeed, selectedSite?.feasibilityScore ?? 50, selectedSiteId, generateMonthlyWind(baseMeanSpeed, selectedSiteId));
+  }, [baseMeanSpeed, selectedSite, selectedSiteId]);
 
   const dailyWindSpeedSelected = useMemo(() => {
-    return generateDailyWind(meanSpeed, selectedSiteId);
-  }, [meanSpeed, selectedSiteId]);
+    return generateDailyWind(effectiveMeanSpeed, selectedSiteId);
+  }, [effectiveMeanSpeed, selectedSiteId]);
 
   const diurnalAnalysisDataSelected = useMemo(() => {
-    return generateDiurnalData(meanSpeed, selectedSiteId);
-  }, [meanSpeed, selectedSiteId]);
+    return generateDiurnalData(effectiveMeanSpeed, selectedSiteId);
+  }, [effectiveMeanSpeed, selectedSiteId]);
 
   const diurnalSummaryTableSelected = useMemo(() => {
     return diurnalAnalysisDataSelected.map((d) => ({
@@ -189,22 +194,22 @@ export default function DataAnalysisPage() {
   }, [diurnalAnalysisDataSelected]);
 
   const hourlyPatternSelected = useMemo(() => {
-    return generateHourlyPattern(meanSpeed, selectedSiteId);
-  }, [meanSpeed, selectedSiteId]);
+    return generateHourlyPattern(effectiveMeanSpeed, selectedSiteId);
+  }, [effectiveMeanSpeed, selectedSiteId]);
 
   const windSpeedDistributionSelected = useMemo(() => {
     const cv = selectedRanking?.metrics.windStabilityCV ?? 0.4;
-    return generateWeibullDistribution(meanSpeed, cv);
-  }, [meanSpeed, selectedRanking]);
+    return generateWeibullDistribution(effectiveMeanSpeed, cv);
+  }, [effectiveMeanSpeed, selectedRanking]);
 
   const windSpeedFrequencyBinsSelected = useMemo(() => {
     const cv = selectedRanking?.metrics.windStabilityCV ?? 0.4;
-    return generateFrequencyBins(meanSpeed, cv);
-  }, [meanSpeed, selectedRanking]);
+    return generateFrequencyBins(effectiveMeanSpeed, cv);
+  }, [effectiveMeanSpeed, selectedRanking]);
 
   const windRoseDataComputed = useMemo(() => {
-    return generateWindRose(meanSpeed, selectedSiteId);
-  }, [meanSpeed, selectedSiteId]);
+    return generateWindRose(effectiveMeanSpeed, selectedSiteId);
+  }, [effectiveMeanSpeed, selectedSiteId]);
 
   // ── Loading & Error States ─────────────────────────────────────────────
 
@@ -266,6 +271,46 @@ export default function DataAnalysisPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Year Selector Control (Global) */}
+            <div className="relative">
+              <button
+                id="global-year-selector"
+                onClick={() => setYearDropdownOpen(!yearDropdownOpen)}
+                className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-white/50 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-medium hover:border-blue-300 hover:shadow-md hover:bg-white/90 transition-all"
+              >
+                <Filter className="w-3.5 h-3.5 text-blue-500" />
+                {selectedYear === "all" ? "Semua Tahun" : `Tahun ${selectedYear}`}
+                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${yearDropdownOpen ? "rotate-180" : ""}`} />
+              </button>
+              
+              {yearDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setYearDropdownOpen(false)} />
+                  <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-1 z-50 w-[240px] max-h-60 overflow-y-auto bg-white/95 backdrop-blur-xl rounded-xl border border-slate-200 shadow-2xl py-1 stagger-in">
+                    <button
+                      onClick={() => { setSelectedYear("all"); setYearDropdownOpen(false); }}
+                      className={`w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors ${selectedYear === "all" ? "text-blue-600 bg-blue-50/50 font-bold" : "text-slate-700"}`}
+                    >
+                      Semua Tahun (Rata-rata)
+                    </button>
+                    <div className="border-t border-slate-100 my-1" />
+                    {Array.from({ length: 13 }, (_, i) => {
+                      const yr = String(2013 + i);
+                      return (
+                        <button
+                          key={yr}
+                          onClick={() => { setSelectedYear(yr); setYearDropdownOpen(false); }}
+                          className={`w-full text-left px-3.5 py-2 text-xs hover:bg-slate-50 transition-colors ${selectedYear === yr ? "text-blue-600 bg-blue-50/50 font-bold" : "text-slate-700"}`}
+                        >
+                          Tahun {yr}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
             {/* Location Selector Dropdown */}
             <div className="relative">
               <button
@@ -359,58 +404,6 @@ export default function DataAnalysisPage() {
 
           {/* Monthly Tab */}
           <TabsContent value="monthly" className="mt-3 space-y-3">
-            {/* Year Selector Control */}
-            <div className="relative z-30 flex flex-wrap items-center justify-between gap-3 p-3 bg-white/70 backdrop-blur-md border border-white/50 rounded-xl shadow-sm">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
-                  <Calendar className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800">Filter Periode Analisis</h4>
-                  <p className="text-[10px] text-slate-400">Pilih tahun spesifik untuk melihat profil angin musiman tahunan</p>
-                </div>
-              </div>
-              
-              <div className="relative">
-                <button
-                  id="year-selector"
-                  onClick={() => setYearDropdownOpen(!yearDropdownOpen)}
-                  className="flex items-center gap-2 bg-white/80 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-semibold hover:border-blue-300 hover:shadow-sm hover:bg-white transition-all"
-                >
-                  <Filter className="w-3 h-3 text-slate-400" />
-                  {selectedYear === "all" ? "Semua Tahun (Rata-rata 2013-2025)" : `Tahun ${selectedYear}`}
-                  <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${yearDropdownOpen ? "rotate-180" : ""}`} />
-                </button>
-                
-                {yearDropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setYearDropdownOpen(false)} />
-                    <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-1.5 z-50 w-[260px] sm:w-64 max-h-60 overflow-y-auto bg-white/95 backdrop-blur-xl rounded-xl border border-slate-200 shadow-2xl py-1 stagger-in">
-                      <button
-                        onClick={() => { setSelectedYear("all"); setYearDropdownOpen(false); }}
-                        className={`w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors ${selectedYear === "all" ? "text-blue-600 bg-blue-50/50 font-bold" : "text-slate-700"}`}
-                      >
-                        Semua Tahun (Rata-rata 2013-2025)
-                      </button>
-                      <div className="border-t border-slate-100 my-1" />
-                      {Array.from({ length: 13 }, (_, i) => {
-                        const yr = String(2013 + i);
-                        return (
-                          <button
-                            key={yr}
-                            onClick={() => { setSelectedYear(yr); setYearDropdownOpen(false); }}
-                            className={`w-full text-left px-3.5 py-2 text-xs hover:bg-slate-50 transition-colors ${selectedYear === yr ? "text-blue-600 bg-blue-50/50 font-bold" : "text-slate-700"}`}
-                          >
-                            Tahun {yr}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
             {/* Profile Charts Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
               <Card className="p-4 glass-card chart-container rounded-xl">
@@ -491,7 +484,7 @@ export default function DataAnalysisPage() {
                   <Legend wrapperStyle={{ display: 'none' }} />
                   <Bar yAxisId="right" dataKey="energy" name="Produksi Energi" radius={[4, 4, 0, 0]} fill="url(#yearlyEnergyGrad)" />
                   <Line yAxisId="left" type="monotone" dataKey="avgSpeed" name="Kecepatan Rata-rata" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: "#2563eb" }} activeDot={{ r: 6 }} />
-                  <ReferenceLine yAxisId="left" y={meanSpeed} stroke="#ef4444" strokeDasharray="3 3" label={{ value: `Rata-rata (${meanSpeed} m/s)`, fill: '#ef4444', fontSize: 9, position: 'insideBottomLeft' }} />
+                  <ReferenceLine yAxisId="left" y={baseMeanSpeed} stroke="#ef4444" strokeDasharray="3 3" label={{ value: `Rata-rata (${baseMeanSpeed} m/s)`, fill: '#ef4444', fontSize: 9, position: 'insideBottomLeft' }} />
                   <defs>
                     <linearGradient id="yearlyEnergyGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#06b6d4" />
@@ -533,7 +526,7 @@ export default function DataAnalysisPage() {
                   <div className="space-y-2 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
                     <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Model & Wind Statistics</h4>
                     {[
-                      ["Mean Wind Speed", `${meanSpeed} m/s`],
+                      ["Mean Wind Speed", `${effectiveMeanSpeed} m/s`],
                       ["WPD", `${selectedRanking?.metrics.windPowerDensity.toFixed(1)} W/m²`],
                       ["Operational %", `${selectedRanking?.metrics.operationalHoursPct.toFixed(1)}%`],
                       ["Wind CV", `${selectedRanking?.metrics.windStabilityCV.toFixed(3)}`],
@@ -549,6 +542,10 @@ export default function DataAnalysisPage() {
                     ))}
                   </div>
                 </div>
+                <p className="text-[9px] text-slate-400 mt-3 pt-2 border-t border-slate-100 leading-relaxed">
+                  *WPD: Wind Power Density | *CV: Coefficient of Variation | *R²: Coefficient of Determination <br />
+                  *MAE: Mean Absolute Error | *RMSE: Root Mean Square Error | *MAPE: Mean Abs Percentage Error
+                </p>
               </Card>
             </div>
           </TabsContent>
