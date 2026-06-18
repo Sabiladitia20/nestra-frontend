@@ -300,15 +300,6 @@ export default function ReportGeneratorPage() {
               Asisten AI interaktif untuk analisis kelayakan &amp; prediksi potensi PLTB berbasis ML
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-9" id="btn-new-chat-header"
-              onClick={startNewChat}>
-              <RefreshCw className="w-3.5 h-3.5" /> Chat Baru
-            </Button>
-            <Button size="sm" className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 h-9" id="btn-generate-report">
-              <FileText className="w-3.5 h-3.5" /> Generate PDF
-            </Button>
-          </div>
         </div>
 
         <div className="flex gap-4">
