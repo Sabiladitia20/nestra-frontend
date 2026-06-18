@@ -1,34 +1,64 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Mail, Lock, Eye, EyeOff, ShieldCheck, CheckCircle } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ShieldCheck, CheckCircle, X } from "lucide-react";
 import nestraLogo from "@/images/nestra.jpeg";
 import { createClient } from "@/lib/supabase/client";
+
+// ─── Password strength rules ─────────────────────────────────────────────────
+const PASSWORD_RULES = [
+  { id: "length",    label: "Minimal 8 karakter",          test: (p: string) => p.length >= 8 },
+  { id: "upper",    label: "Huruf besar (A–Z)",            test: (p: string) => /[A-Z]/.test(p) },
+  { id: "lower",    label: "Huruf kecil (a–z)",            test: (p: string) => /[a-z]/.test(p) },
+  { id: "number",   label: "Angka (0–9)",                  test: (p: string) => /[0-9]/.test(p) },
+  { id: "symbol",   label: "Simbol (!@#$%^&*…)",          test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+];
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const router = useRouter();
 
+  // ─── Password strength ───────────────────────────────────────────────────
+  const passedRules = useMemo(
+    () => PASSWORD_RULES.map((r) => ({ ...r, passed: r.test(password) })),
+    [password]
+  );
+  const strengthScore = passedRules.filter((r) => r.passed).length; // 0–5
+  const strengthLabel =
+    strengthScore === 0 ? ""
+    : strengthScore <= 2 ? "Lemah"
+    : strengthScore <= 3 ? "Sedang"
+    : strengthScore <= 4 ? "Kuat"
+    : "Sangat Kuat";
+  const strengthColor =
+    strengthScore <= 2 ? "bg-red-500"
+    : strengthScore === 3 ? "bg-yellow-400"
+    : strengthScore === 4 ? "bg-blue-500"
+    : "bg-green-500";
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (password !== confirmPassword) {
-      setError("Password dan Konfirmasi Password tidak cocok.");
+    // Validate all password rules
+    const failed = passedRules.filter((r) => !r.passed);
+    if (failed.length > 0) {
+      setError(`Password belum memenuhi: ${failed.map((r) => r.label).join(", ")}.`);
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password minimal 6 karakter.");
+    if (password !== confirmPassword) {
+      setError("Password dan Konfirmasi Password tidak cocok.");
       return;
     }
 
@@ -167,6 +197,46 @@ export default function RegisterPage() {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+
+              {/* Strength bar */}
+              {password.length > 0 && (
+                <div className="mt-2">
+                  <div className="flex gap-1 mb-1.5">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div
+                        key={i}
+                        className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
+                          i <= strengthScore ? strengthColor : "bg-gray-200"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  {strengthLabel && (
+                    <p className={`text-xs font-medium ${
+                      strengthScore <= 2 ? "text-red-500"
+                      : strengthScore === 3 ? "text-yellow-500"
+                      : strengthScore === 4 ? "text-blue-500"
+                      : "text-green-500"
+                    }`}>
+                      Kekuatan Password: {strengthLabel}
+                    </p>
+                  )}
+
+                  {/* Rule checklist */}
+                  <ul className="mt-2 space-y-1">
+                    {passedRules.map((r) => (
+                      <li key={r.id} className={`flex items-center gap-1.5 text-xs ${
+                        r.passed ? "text-green-600" : "text-gray-400"
+                      }`}>
+                        {r.passed
+                          ? <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                          : <X className="w-3.5 h-3.5 flex-shrink-0" />}
+                        {r.label}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div>
@@ -179,17 +249,40 @@ export default function RegisterPage() {
                 </div>
                 <input
                   id="confirmPassword"
-                  type={showPassword ? "text" : "password"}
+                  type={showConfirmPassword ? "text" : "password"}
                   required
                   value={confirmPassword}
                   onChange={(e) => {
                     setConfirmPassword(e.target.value);
                     if (error) setError("");
                   }}
-                  className="block w-full pl-10 pr-10 sm:text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 py-2.5 border"
+                  className={`block w-full pl-10 pr-10 sm:text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 py-2.5 border ${
+                    confirmPassword.length > 0
+                      ? confirmPassword === password
+                        ? "border-green-400 focus:border-green-500 focus:ring-green-500"
+                        : "border-red-400 focus:border-red-500 focus:ring-red-500"
+                      : "border-gray-300"
+                  }`}
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
+              {/* Match indicator */}
+              {confirmPassword.length > 0 && (
+                <p className={`mt-1 text-xs flex items-center gap-1 ${
+                  confirmPassword === password ? "text-green-600" : "text-red-500"
+                }`}>
+                  {confirmPassword === password
+                    ? <><CheckCircle className="w-3.5 h-3.5" /> Password cocok</>
+                    : <><X className="w-3.5 h-3.5" /> Password tidak cocok</>}
+                </p>
+              )}
             </div>
 
             {error && (
