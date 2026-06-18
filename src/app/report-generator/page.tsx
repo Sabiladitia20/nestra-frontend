@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Send, Bot, User, Copy, Download, FileText, Sparkles,
   ChevronRight, Zap, Wind, BarChart2, MapPin, CheckCircle2,
-  RefreshCw, Database, TrendingUp,
+  RefreshCw, Database, TrendingUp, MessageSquare, History
 } from "lucide-react";
 import { locationData, kpiData } from "@/lib/mockData";
 
@@ -317,87 +317,47 @@ export default function ReportGeneratorPage() {
             </Card>
           </div>
 
-          {/* Right Sidebar — unchanged */}
-          <div className="w-56 flex-shrink-0 hidden xl:flex flex-col gap-2.5">
-            <Card className="p-3 glass-card rounded-xl">
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <Database className="w-3.5 h-3.5 text-blue-500" />
-                <h3 className="text-xs font-bold text-slate-800">Dataset Aktif</h3>
+          {/* Right Sidebar — Chat History */}
+          <div className="w-64 flex-shrink-0 hidden xl:flex flex-col gap-2.5">
+            <Card className="p-4 glass-card rounded-xl flex-1 flex flex-col min-h-0 border-slate-200/60"
+              style={{ maxHeight: "calc(100vh - 240px)" }}>
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+                <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center">
+                  <History className="w-3.5 h-3.5 text-blue-600" />
+                </div>
+                <h3 className="text-xs font-bold text-slate-800">Riwayat Chat</h3>
               </div>
-              <div className="space-y-1.5">
-                <div className="flex items-start gap-1.5">
-                  <MapPin className="w-3 h-3 text-slate-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-[9px] text-slate-400">Lokasi</p>
-                    <p className="text-[11px] font-semibold text-slate-700 leading-tight">Seluruh Lokasi</p>
-                  </div>
+              <div className="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-1">
+                <div className="p-2.5 bg-blue-50/50 border border-blue-100 rounded-lg cursor-pointer">
+                  <p className="text-[11px] font-semibold text-slate-800 truncate">Analisis Kelayakan PLTB...</p>
+                  <p className="text-[9px] text-slate-500 mt-1">Hari ini, 10:24</p>
                 </div>
                 {[
-                  { label: "Periode",  value: "Jan 2013 – Des 2025" },
-                  { label: "Records",  value: "113,880 jam" },
-                  { label: "Sumber",   value: "NASA" },
-                  { label: "Kualitas", value: "99.5% valid" },
-                ].map((d) => (
-                  <div key={d.label} className="flex justify-between text-[11px]">
-                    <span className="text-slate-400">{d.label}</span>
-                    <span className="text-slate-700 font-medium">{d.value}</span>
+                  { title: "Rekomendasi Turbin Angin", time: "Kemarin, 14:15" },
+                  { title: "Estimasi Energi Tahunan", time: "16 Jun, 09:30" },
+                  { title: "Kelebihan Lokasi Pantai", time: "15 Jun, 16:45" },
+                  { title: "Risiko Pembangunan", time: "14 Jun, 11:20" },
+                ].map((item, i) => (
+                  <div key={i} className="p-2.5 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-100">
+                    <p className="text-[11px] font-medium text-slate-600 truncate">{item.title}</p>
+                    <p className="text-[9px] text-slate-400 mt-1">{item.time}</p>
                   </div>
                 ))}
               </div>
-            </Card>
-
-            <Card className="p-3 glass-card rounded-xl">
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <TrendingUp className="w-3.5 h-3.5 text-blue-500" />
-                <h3 className="text-xs font-bold text-slate-800">Hasil Prediksi</h3>
-              </div>
-              <div className="space-y-2">
-                {kpiData.map((kpi) => (
-                  <div key={kpi.id} className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[9px] text-slate-400 leading-none">{kpi.label}</p>
-                      <p className="text-xs font-bold text-slate-800 mt-0.5">
-                        {kpi.value} <span className="text-[10px] font-normal text-slate-400">{kpi.unit}</span>
-                      </p>
-                    </div>
-                    <Badge className={`text-[8px] border-0 ${
-                      kpi.id === "feasibility" ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"}`}>
-                      ↑
-                    </Badge>
-                  </div>
-                ))}
+              
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700 gap-1.5 text-xs h-8 text-white"
+                  onClick={() => {
+                    setMessages([{ id: "welcome", role: "assistant", content: "Chat baru dimulai. Silakan ajukan pertanyaan.", timestamp: new Date() }]);
+                    setError(null);
+                  }}>
+                  <MessageSquare className="w-3 h-3" /> Chat Baru
+                </Button>
+                <Button variant="outline" className="w-full text-xs h-8 text-slate-500 gap-1.5">
+                  <Download className="w-3 h-3" /> Export PDF
+                </Button>
               </div>
             </Card>
-
-            <Card className="p-3 glass-card rounded-xl">
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <FileText className="w-3.5 h-3.5 text-blue-500" />
-                <h3 className="text-xs font-bold text-slate-800">Template Laporan</h3>
-              </div>
-              <div className="space-y-0.5">
-                {EXAMPLE_PROMPTS.map((p) => (
-                  <button key={p.prompt} onClick={() => sendMessage(p.prompt)}
-                    className="w-full flex items-center gap-1.5 p-1.5 rounded-lg text-left hover:bg-blue-50 text-[11px] text-slate-500 hover:text-blue-700 transition-colors group"
-                    id={`sidebar-prompt-${p.label.toLowerCase().replace(/\s/g, "-")}`}>
-                    <p.icon className="w-3 h-3 text-slate-400 group-hover:text-blue-500 flex-shrink-0" />
-                    <span className="leading-tight">{p.label}</span>
-                    <ChevronRight className="w-2.5 h-2.5 ml-auto text-slate-300 group-hover:text-blue-400" />
-                  </button>
-                ))}
-              </div>
-            </Card>
-
-            <div className="space-y-1.5">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 gap-1.5 text-xs h-8" id="btn-generate-full-report">
-                <FileText className="w-3 h-3" /> Full Report
-              </Button>
-              <Button variant="outline" className="w-full gap-1.5 text-xs h-8" id="btn-copy-all">
-                <Copy className="w-3 h-3" /> Salin Chat
-              </Button>
-              <Button variant="outline" className="w-full gap-1.5 text-xs h-8" id="btn-export-pdf">
-                <Download className="w-3 h-3" /> Export PDF
-              </Button>
-            </div>
           </div>
         </div>
       </div>
